@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { CalendarIcon, LucideLoader2, Save } from 'lucide-react';
-import { toast } from '../components/ui/sonner';
+import { toast } from '../lib/toast';
 import { cn } from '../lib/utils';
 
 const MarkAttendance: React.FC = () => {

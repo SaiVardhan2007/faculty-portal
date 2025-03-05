@@ -1,108 +1,74 @@
 
-import { 
-  Student, 
-  Subject, 
-  AttendanceRecord, 
-  AttendanceSummary, 
-  SubjectAttendance, 
-  StudentAttendance 
-} from './types';
-import { subjects, attendanceRecords } from './mockData';
+import { AttendanceRecord } from './types';
+import { attendanceRecords } from './mockData';
 
-// Calculate overall attendance for a student
-export const calculateOverallAttendance = (studentId: string): AttendanceSummary => {
-  const studentRecords = attendanceRecords.filter(record => record.studentId === studentId);
-  const totalClasses = studentRecords.length;
-  const present = studentRecords.filter(record => record.status === 'present').length;
-  const absent = totalClasses - present;
-  const percentage = totalClasses > 0 ? Math.round((present / totalClasses) * 100) : 0;
-
-  return {
-    totalClasses,
-    present,
-    absent,
-    percentage
-  };
-};
-
-// Calculate attendance for a specific subject for a student
-export const calculateSubjectAttendance = (studentId: string, subjectId: string): AttendanceSummary => {
-  const subjectRecords = attendanceRecords.filter(
-    record => record.studentId === studentId && record.subjectId === subjectId
-  );
-  
-  const totalClasses = subjectRecords.length;
-  const present = subjectRecords.filter(record => record.status === 'present').length;
-  const absent = totalClasses - present;
-  const percentage = totalClasses > 0 ? Math.round((present / totalClasses) * 100) : 0;
-
-  return {
-    totalClasses,
-    present,
-    absent,
-    percentage
-  };
-};
-
-// Get full attendance details for a student
-export const getStudentAttendance = (student: Student): StudentAttendance => {
-  const overall = calculateOverallAttendance(student.id);
-  
-  const subjectAttendance: SubjectAttendance[] = subjects.map(subject => {
-    const summary = calculateSubjectAttendance(student.id, subject.id);
-    
-    return {
-      subjectId: subject.id,
-      subjectName: subject.name,
-      subjectCode: subject.code,
-      summary
-    };
-  });
-  
-  return {
-    student,
-    overall,
-    subjects: subjectAttendance
-  };
-};
-
-// Mark attendance for a specific date, subject and multiple students
+// Mark attendance for a given date, subject, and list of students
 export const markAttendance = (
-  date: string, 
-  subjectId: string, 
+  date: string,
+  subjectId: string,
   studentStatuses: { studentId: string; status: 'present' | 'absent' }[],
-  facultyId: string
+  markedById: string
 ): void => {
   // In a real app, this would send a request to the backend
-  // For now, we'll update our mock data
+  // For now, we'll update the mock data
   
+  // Remove any existing records for this date and subject
+  const filtered = attendanceRecords.filter(
+    record => !(record.date === date && record.subjectId === subjectId)
+  );
+  
+  // Add new records
   studentStatuses.forEach(({ studentId, status }) => {
-    const existingIndex = attendanceRecords.findIndex(
-      record => 
-        record.date === date && 
-        record.subjectId === subjectId && 
-        record.studentId === studentId
-    );
-    
-    const record: AttendanceRecord = {
+    filtered.push({
       id: `${date}-${studentId}-${subjectId}`,
       date,
       studentId,
       subjectId,
       status,
-      markedById: facultyId,
-      markedAt: new Date().toISOString()
-    };
-    
-    if (existingIndex >= 0) {
-      attendanceRecords[existingIndex] = record;
-    } else {
-      attendanceRecords.push(record);
-    }
+      markedById,
+      markedAt: new Date().toISOString(),
+    });
   });
+  
+  // Update the global attendanceRecords array
+  // Note: In a real app, this would be handled by a database
+  attendanceRecords.length = 0;
+  attendanceRecords.push(...filtered);
+  
+  console.log(`Attendance marked for ${date} and subject ${subjectId}`);
 };
 
-// Get subject by ID
-export const getSubjectById = (subjectId: string): Subject | undefined => {
-  return subjects.find(subject => subject.id === subjectId);
+// Get attendance records for a specific student
+export const getStudentAttendance = (
+  studentId: string,
+  startDate?: string,
+  endDate?: string
+): AttendanceRecord[] => {
+  let records = attendanceRecords.filter(record => record.studentId === studentId);
+  
+  if (startDate) {
+    records = records.filter(record => record.date >= startDate);
+  }
+  
+  if (endDate) {
+    records = records.filter(record => record.date <= endDate);
+  }
+  
+  return records;
+};
+
+// Calculate attendance percentage for a student
+export const calculateAttendancePercentage = (
+  studentId: string,
+  subjectId?: string
+): number => {
+  const records = attendanceRecords.filter(
+    record => record.studentId === studentId && 
+    (subjectId ? record.subjectId === subjectId : true)
+  );
+  
+  if (records.length === 0) return 0;
+  
+  const present = records.filter(record => record.status === 'present').length;
+  return Math.round((present / records.length) * 100);
 };

@@ -1,4 +1,3 @@
-
 import { Student, Faculty, Subject, AttendanceRecord, AuthUser } from './types';
 import { format } from 'date-fns';
 
@@ -75,6 +74,24 @@ export const students: Student[] = [
     year: 3,
     section: 'A',
     imageUrl: 'https://i.pravatar.cc/150?img=8',
+  },
+  {
+    id: '9',
+    rollNumber: 'CS21009',
+    name: 'Rohan Kapoor',
+    course: 'B.Tech',
+    year: 3,
+    section: 'B',
+    imageUrl: 'https://i.pravatar.cc/150?img=11',
+  },
+  {
+    id: '10',
+    rollNumber: 'CS21010',
+    name: 'Meera Rajput',
+    course: 'B.Tech',
+    year: 3,
+    section: 'B',
+    imageUrl: 'https://i.pravatar.cc/150?img=12',
   },
 ];
 

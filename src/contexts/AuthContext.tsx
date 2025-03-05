@@ -1,82 +1,95 @@
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthUser } from '../lib/types';
-import { toast } from '../components/ui/sonner';
 import { loginUser, getCurrentUser, setCurrentUser } from '../lib/mockData';
+import { toast } from '../lib/toast';
 
+// Define the shape of our context
 interface AuthContextType {
   user: AuthUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  isLoading: boolean;
-  isAuthenticated: boolean;
+  error: string | null;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Create the context with a default value
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  login: async () => false,
+  logout: () => {},
+  error: null,
+});
+
+// Hook to use the auth context
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Check if user is already logged in
   useEffect(() => {
-    // Check if user is logged in
-    const storedUser = getCurrentUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-    setIsLoading(false);
+    const checkUser = async () => {
+      try {
+        const currentUser = getCurrentUser();
+        setUser(currentUser);
+      } catch (err) {
+        console.error('Failed to get current user:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUser();
   }, []);
 
+  // Log in a user
   const login = async (email: string, password: string): Promise<boolean> => {
+    setError(null);
     setIsLoading(true);
+    
     try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Simulate network request
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const user = loginUser(email, password);
       
       if (user) {
         setUser(user);
         setCurrentUser(user);
-        toast.success(`Welcome back, ${user.name}`);
+        toast.success('Logged in successfully');
         return true;
       } else {
+        setError('Invalid email or password');
         toast.error('Invalid email or password');
         return false;
       }
-    } catch (error) {
-      toast.error('An error occurred during login');
+    } catch (err) {
+      setError('An error occurred during login');
+      toast.error('Login failed');
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Log out a user
   const logout = () => {
     setUser(null);
     setCurrentUser(null);
-    toast.success('You have been logged out');
+    toast.info('Logged out');
   };
 
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider 
-      value={{ 
-        user, 
-        login, 
-        logout, 
-        isLoading, 
-        isAuthenticated: !!user 
-      }}
-    >
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

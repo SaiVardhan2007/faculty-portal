@@ -8,9 +8,14 @@ import { Progress } from './ui/progress';
 interface SubjectAttendanceCardProps {
   subject: SubjectAttendance;
   className?: string;
+  animationDelay?: string;
 }
 
-const SubjectAttendanceCard: React.FC<SubjectAttendanceCardProps> = ({ subject, className }) => {
+const SubjectAttendanceCard: React.FC<SubjectAttendanceCardProps> = ({ 
+  subject, 
+  className,
+  animationDelay 
+}) => {
   const getStatusColor = (percentage: number) => {
     if (percentage >= 75) return 'text-emerald-500';
     if (percentage >= 60) return 'text-amber-500';
@@ -23,8 +28,16 @@ const SubjectAttendanceCard: React.FC<SubjectAttendanceCardProps> = ({ subject, 
     return 'bg-red-500';
   };
 
+  const style = animationDelay ? { animationDelay } : {};
+
   return (
-    <Card className={cn('hover-scale backdrop-blur-card glass-card dark:glass-card-dark', className)}>
+    <Card 
+      className={cn(
+        'hover-scale backdrop-blur-card glass-card dark:glass-card-dark animate-scale-in', 
+        className
+      )}
+      style={style}
+    >
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div>
@@ -44,8 +57,7 @@ const SubjectAttendanceCard: React.FC<SubjectAttendanceCardProps> = ({ subject, 
       <CardContent>
         <Progress 
           value={subject.summary.percentage} 
-          className="h-2 mb-3"
-          indicatorClassName={getProgressColor(subject.summary.percentage)}
+          className={cn("h-2 mb-3", getProgressColor(subject.summary.percentage))}
         />
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div className="text-center p-2 bg-secondary rounded-md">
