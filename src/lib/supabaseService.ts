@@ -6,7 +6,7 @@ import { toast } from "./toast";
 // Convert DB student to app student model
 export const mapDbStudentToStudent = (dbStudent: DbStudent): Student => ({
   id: dbStudent.id,
-  rollNumber: dbStudent.roll_number,
+  roll_number: dbStudent.roll_number,
   name: dbStudent.name,
   course: dbStudent.course,
   year: dbStudent.year,
@@ -16,7 +16,7 @@ export const mapDbStudentToStudent = (dbStudent: DbStudent): Student => ({
 // Convert app student to DB student model
 export const mapStudentToDbStudent = (student: Partial<Student>): Partial<DbStudent> => ({
   ...(student.id && { id: student.id }),
-  ...(student.rollNumber && { roll_number: student.rollNumber }),
+  ...(student.roll_number && { roll_number: student.roll_number }),
   ...(student.name && { name: student.name }),
   ...(student.course && { course: student.course }),
   ...(student.year && { year: student.year }),
@@ -28,8 +28,8 @@ export const mapDbSubjectToSubject = (dbSubject: DbSubject): Subject => ({
   id: dbSubject.id,
   code: dbSubject.code,
   name: dbSubject.name,
-  facultyId: dbSubject.faculty_id,
-  courseId: dbSubject.course_id
+  faculty_id: dbSubject.faculty_id,
+  course_id: dbSubject.course_id
 });
 
 // Convert app subject to DB subject model
@@ -37,8 +37,8 @@ export const mapSubjectToDbSubject = (subject: Partial<Subject>): Partial<DbSubj
   ...(subject.id && { id: subject.id }),
   ...(subject.code && { code: subject.code }),
   ...(subject.name && { name: subject.name }),
-  ...(subject.facultyId && { faculty_id: subject.facultyId }),
-  ...(subject.courseId && { course_id: subject.courseId })
+  ...(subject.faculty_id && { faculty_id: subject.faculty_id }),
+  ...(subject.course_id && { course_id: subject.course_id })
 });
 
 // Students API
@@ -61,11 +61,15 @@ export const fetchStudents = async (): Promise<Student[]> => {
 
 export const addStudent = async (student: Omit<Student, 'id'>): Promise<Student | null> => {
   try {
-    const dbStudent = mapStudentToDbStudent(student);
-    
     const { data, error } = await supabase
       .from('students')
-      .insert(dbStudent)
+      .insert({
+        roll_number: student.roll_number,
+        name: student.name,
+        course: student.course,
+        year: student.year,
+        section: student.section
+      })
       .select()
       .single();
     
@@ -137,11 +141,14 @@ export const fetchSubjects = async (): Promise<Subject[]> => {
 
 export const addSubject = async (subject: Omit<Subject, 'id'>): Promise<Subject | null> => {
   try {
-    const dbSubject = mapSubjectToDbSubject(subject);
-    
     const { data, error } = await supabase
       .from('subjects')
-      .insert(dbSubject)
+      .insert({
+        code: subject.code,
+        name: subject.name,
+        faculty_id: subject.faculty_id,
+        course_id: subject.course_id
+      })
       .select()
       .single();
     

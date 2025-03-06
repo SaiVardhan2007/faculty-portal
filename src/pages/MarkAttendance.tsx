@@ -80,6 +80,7 @@ const MarkAttendance: React.FC = () => {
       attendanceData: Record<string, 'present' | 'absent'>;
       userId: string;
     }) => {
+      // For all students, initialize with 'absent' status if not marked
       const studentStatuses = students.map(student => ({
         studentId: student.id,
         status: attendanceData[student.id] || 'absent'
@@ -171,7 +172,7 @@ const MarkAttendance: React.FC = () => {
     setAttendanceData({});
   };
   
-  const canMarkAttendance = date ? isToday(format(date, 'yyyy-MM-dd')) : false;
+  const canMarkAttendance = date ? dateFnsIsToday(date) : false;
   const isLoading = isLoadingStudents || isLoadingSubjects;
   
   return (

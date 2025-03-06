@@ -29,7 +29,7 @@ const Admin: React.FC = () => {
   const queryClient = useQueryClient();
   
   const [newStudent, setNewStudent] = useState({
-    rollNumber: '',
+    roll_number: '',
     name: '',
     course: 'B.Tech',
     year: 3,
@@ -43,7 +43,7 @@ const Admin: React.FC = () => {
   
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState({
-    rollNumber: '',
+    roll_number: '',
     name: '',
   });
   
@@ -79,7 +79,7 @@ const Admin: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setNewStudent({
-        rollNumber: '',
+        roll_number: '',
         name: '',
         course: 'B.Tech',
         year: 3,
@@ -91,7 +91,7 @@ const Admin: React.FC = () => {
 
   // Update student mutation
   const updateStudentMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ rollNumber: string; name: string }> }) => 
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ roll_number: string; name: string }> }) => 
       updateStudent(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
@@ -114,8 +114,8 @@ const Admin: React.FC = () => {
     mutationFn: (subjectData: { code: string; name: string; }) => 
       addSubject({
         ...subjectData,
-        facultyId: user?.id || '1',
-        courseId: '1'
+        faculty_id: user?.id || '1',
+        course_id: '1'
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
@@ -132,8 +132,8 @@ const Admin: React.FC = () => {
     mutationFn: ({ id, updates }: { id: string; updates: Partial<{ code: string; name: string }> }) => 
       updateSubject(id, {
         ...updates,
-        facultyId: user?.id || '1',
-        courseId: '1'
+        faculty_id: user?.id || '1',
+        course_id: '1'
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
@@ -158,7 +158,7 @@ const Admin: React.FC = () => {
   }, [isAuthenticated, user, navigate]);
   
   const handleAddStudent = () => {
-    if (!newStudent.rollNumber || !newStudent.name) {
+    if (!newStudent.roll_number || !newStudent.name) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -180,7 +180,7 @@ const Admin: React.FC = () => {
     if (student) {
       setEditingStudentId(id);
       setEditingStudent({
-        rollNumber: student.rollNumber,
+        roll_number: student.roll_number,
         name: student.name,
       });
     }
@@ -266,8 +266,8 @@ const Admin: React.FC = () => {
                       <Label htmlFor="new-roll">Roll Number</Label>
                       <Input 
                         id="new-roll" 
-                        value={newStudent.rollNumber}
-                        onChange={(e) => setNewStudent({...newStudent, rollNumber: e.target.value})}
+                        value={newStudent.roll_number}
+                        onChange={(e) => setNewStudent({...newStudent, roll_number: e.target.value})}
                       />
                     </div>
                     <div className="space-y-2">
@@ -329,11 +329,11 @@ const Admin: React.FC = () => {
                             <TableCell>
                               {editingStudentId === student.id ? (
                                 <Input 
-                                  value={editingStudent.rollNumber}
-                                  onChange={(e) => setEditingStudent({...editingStudent, rollNumber: e.target.value})}
+                                  value={editingStudent.roll_number}
+                                  onChange={(e) => setEditingStudent({...editingStudent, roll_number: e.target.value})}
                                 />
                               ) : (
-                                student.rollNumber
+                                student.roll_number
                               )}
                             </TableCell>
                             <TableCell>

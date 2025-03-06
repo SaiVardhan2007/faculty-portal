@@ -56,7 +56,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
             const status = attendance[student.id];
             return (
               <TableRow key={student.id} className="h-16">
-                <TableCell className="font-medium">{student.rollNumber}</TableCell>
+                <TableCell className="font-medium">{student.roll_number}</TableCell>
                 <TableCell>
                   <span>{student.name}</span>
                 </TableCell>

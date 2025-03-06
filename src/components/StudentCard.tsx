@@ -31,7 +31,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, className, style }) 
       <CardContent className="p-4">
         <div className="flex flex-col items-center text-center space-y-3">
           <span className="text-xl font-semibold text-primary bg-primary/10 px-4 py-2 rounded-lg w-full">
-            {student.rollNumber}
+            {student.roll_number}
           </span>
           
           <h3 className="text-lg font-medium mt-1">{student.name}</h3>
