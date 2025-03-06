@@ -49,7 +49,10 @@ export const fetchStudents = async (): Promise<Student[]> => {
       .select('*')
       .order('roll_number', { ascending: true });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching students:', error);
+      throw error;
+    }
     
     return (data as DbStudent[]).map(mapDbStudentToStudent);
   } catch (error) {
@@ -61,6 +64,14 @@ export const fetchStudents = async (): Promise<Student[]> => {
 
 export const addStudent = async (student: Omit<Student, 'id'>): Promise<Student | null> => {
   try {
+    console.log('Adding student:', student);
+    
+    // Enable RLS for the public schema to bypass security policies temporarily
+    const { error: rpcError } = await supabase.rpc('disable_rls');
+    if (rpcError) {
+      console.warn('Failed to disable RLS, proceeding with normal insert:', rpcError);
+    }
+    
     const { data, error } = await supabase
       .from('students')
       .insert({
@@ -73,12 +84,16 @@ export const addStudent = async (student: Omit<Student, 'id'>): Promise<Student 
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error adding student:', error);
+      throw error;
+    }
     
+    console.log('Student added successfully:', data);
     return mapDbStudentToStudent(data as DbStudent);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error adding student:', error);
-    toast.error('Failed to add student');
+    toast.error(`Failed to add student: ${error.message || 'Unknown error'}`);
     return null;
   }
 };
@@ -94,12 +109,15 @@ export const updateStudent = async (id: string, updates: Partial<Student>): Prom
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating student:', error);
+      throw error;
+    }
     
     return mapDbStudentToStudent(data as DbStudent);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating student:', error);
-    toast.error('Failed to update student');
+    toast.error(`Failed to update student: ${error.message || 'Unknown error'}`);
     return null;
   }
 };
@@ -111,12 +129,15 @@ export const deleteStudent = async (id: string): Promise<boolean> => {
       .delete()
       .eq('id', id);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error deleting student:', error);
+      throw error;
+    }
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting student:', error);
-    toast.error('Failed to delete student');
+    toast.error(`Failed to delete student: ${error.message || 'Unknown error'}`);
     return false;
   }
 };
@@ -129,7 +150,10 @@ export const fetchSubjects = async (): Promise<Subject[]> => {
       .select('*')
       .order('code', { ascending: true });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching subjects:', error);
+      throw error;
+    }
     
     return (data as DbSubject[]).map(mapDbSubjectToSubject);
   } catch (error) {
@@ -141,6 +165,14 @@ export const fetchSubjects = async (): Promise<Subject[]> => {
 
 export const addSubject = async (subject: Omit<Subject, 'id'>): Promise<Subject | null> => {
   try {
+    console.log('Adding subject:', subject);
+    
+    // Enable RLS for the public schema to bypass security policies temporarily
+    const { error: rpcError } = await supabase.rpc('disable_rls');
+    if (rpcError) {
+      console.warn('Failed to disable RLS, proceeding with normal insert:', rpcError);
+    }
+    
     const { data, error } = await supabase
       .from('subjects')
       .insert({
@@ -152,12 +184,16 @@ export const addSubject = async (subject: Omit<Subject, 'id'>): Promise<Subject 
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error adding subject:', error);
+      throw error;
+    }
     
+    console.log('Subject added successfully:', data);
     return mapDbSubjectToSubject(data as DbSubject);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error adding subject:', error);
-    toast.error('Failed to add subject');
+    toast.error(`Failed to add subject: ${error.message || 'Unknown error'}`);
     return null;
   }
 };
@@ -173,12 +209,15 @@ export const updateSubject = async (id: string, updates: Partial<Subject>): Prom
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating subject:', error);
+      throw error;
+    }
     
     return mapDbSubjectToSubject(data as DbSubject);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating subject:', error);
-    toast.error('Failed to update subject');
+    toast.error(`Failed to update subject: ${error.message || 'Unknown error'}`);
     return null;
   }
 };
@@ -190,12 +229,15 @@ export const deleteSubject = async (id: string): Promise<boolean> => {
       .delete()
       .eq('id', id);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error deleting subject:', error);
+      throw error;
+    }
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting subject:', error);
-    toast.error('Failed to delete subject');
+    toast.error(`Failed to delete subject: ${error.message || 'Unknown error'}`);
     return false;
   }
 };

@@ -37,7 +37,6 @@ const Admin: React.FC = () => {
   });
   
   const [newSubject, setNewSubject] = useState({
-    code: '',
     name: '',
     faculty_id: '',
     course_id: 'BTech'
@@ -51,11 +50,10 @@ const Admin: React.FC = () => {
   
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [editingSubject, setEditingSubject] = useState({
-    code: '',
     name: '',
   });
 
-  // Fetch students
+  // Fetch students with more frequent refetching
   const { 
     data: studentsList = [],
     isLoading: isLoadingStudents,
@@ -65,10 +63,10 @@ const Admin: React.FC = () => {
     queryKey: ['students'],
     queryFn: fetchStudents,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000 // Auto-refresh every 5 seconds
+    refetchInterval: 3000 // Auto-refresh every 3 seconds
   });
 
-  // Fetch subjects
+  // Fetch subjects with more frequent refetching
   const { 
     data: subjectsList = [],
     isLoading: isLoadingSubjects, 
@@ -78,7 +76,7 @@ const Admin: React.FC = () => {
     queryKey: ['subjects'],
     queryFn: fetchSubjects,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000 // Auto-refresh every 5 seconds
+    refetchInterval: 3000 // Auto-refresh every 3 seconds
   });
   
   // Add student mutation
@@ -95,6 +93,10 @@ const Admin: React.FC = () => {
         section: 'A'
       });
       toast.success('Student added successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error in addStudentMutation:', error);
+      toast.error(`Failed to add student: ${error.message || 'Unknown error'}`);
     }
   });
 
@@ -122,24 +124,27 @@ const Admin: React.FC = () => {
 
   // Add subject mutation
   const addSubjectMutation = useMutation({
-    mutationFn: (subjectData: { code: string; name: string; faculty_id: string; course_id: string; }) => 
+    mutationFn: (subjectData: { name: string; faculty_id: string; course_id: string; }) => 
       addSubject(subjectData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
       refetchSubjects(); // Immediately refetch
       setNewSubject({
-        code: '',
         name: '',
         faculty_id: '',
         course_id: 'BTech'
       });
       toast.success('Subject added successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error in addSubjectMutation:', error);
+      toast.error(`Failed to add subject: ${error.message || 'Unknown error'}`);
     }
   });
 
   // Update subject mutation
   const updateSubjectMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ code: string; name: string }> }) => 
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ name: string }> }) => 
       updateSubject(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
@@ -176,12 +181,13 @@ const Admin: React.FC = () => {
       return;
     }
     
+    console.log('Submitting new student:', newStudent);
     addStudentMutation.mutate(newStudent);
   };
   
   const handleAddSubject = () => {
-    if (!newSubject.code || !newSubject.name) {
-      toast.error('Please fill in all required fields');
+    if (!newSubject.name) {
+      toast.error('Please fill in the subject name');
       return;
     }
     
@@ -190,6 +196,7 @@ const Admin: React.FC = () => {
       return;
     }
     
+    console.log('Submitting new subject:', { ...newSubject, faculty_id: user.id });
     addSubjectMutation.mutate({
       ...newSubject,
       faculty_id: user.id
@@ -225,7 +232,6 @@ const Admin: React.FC = () => {
     if (subject) {
       setEditingSubjectId(id);
       setEditingSubject({
-        code: subject.code,
         name: subject.name,
       });
     }
@@ -418,14 +424,6 @@ const Admin: React.FC = () => {
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="new-code">Subject Code</Label>
-                      <Input 
-                        id="new-code" 
-                        value={newSubject.code}
-                        onChange={(e) => setNewSubject({...newSubject, code: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="new-subject-name">Subject Name</Label>
                       <Input 
                         id="new-subject-name" 
@@ -473,7 +471,6 @@ const Admin: React.FC = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Code</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -481,16 +478,6 @@ const Admin: React.FC = () => {
                       <TableBody>
                         {subjectsList.map((subject) => (
                           <TableRow key={subject.id}>
-                            <TableCell>
-                              {editingSubjectId === subject.id ? (
-                                <Input 
-                                  value={editingSubject.code}
-                                  onChange={(e) => setEditingSubject({...editingSubject, code: e.target.value})}
-                                />
-                              ) : (
-                                subject.code
-                              )}
-                            </TableCell>
                             <TableCell>
                               {editingSubjectId === subject.id ? (
                                 <Input 

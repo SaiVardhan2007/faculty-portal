@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { students } from '../lib/mockData';
+import React, { useState, useEffect } from 'react';
+import { fetchStudents, fetchSubjects } from '../lib/supabaseService';
 import StudentCard from '../components/StudentCard';
 import { Input } from '../components/ui/input';
 import Header from '../components/Header';
@@ -8,14 +8,32 @@ import { Search, UserCheck, Calendar, Book } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 
 const Index: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   
-  const filteredStudents = students.filter(student => 
+  // Fetch students from Supabase
+  const { data: studentsList = [], isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['students'],
+    queryFn: fetchStudents,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+  
+  // Fetch subjects from Supabase
+  const { data: subjectsList = [], isLoading: isLoadingSubjects } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: fetchSubjects,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+  
+  const filteredStudents = studentsList.filter(student => 
     student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    student.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   const goToMarkAttendance = () => {
@@ -43,7 +61,7 @@ const Index: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-medium">Total Students</h3>
-                  <p className="text-2xl font-bold">{students.length}</p>
+                  <p className="text-2xl font-bold">{isLoadingStudents ? <Loader2 className="h-4 w-4 animate-spin" /> : studentsList.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -55,7 +73,7 @@ const Index: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-medium">Working Days</h3>
-                  <p className="text-2xl font-bold">22</p>
+                  <p className="text-2xl font-bold">0</p>
                 </div>
               </CardContent>
             </Card>
@@ -67,7 +85,7 @@ const Index: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-medium">Subjects</h3>
-                  <p className="text-2xl font-bold">4</p>
+                  <p className="text-2xl font-bold">{isLoadingSubjects ? <Loader2 className="h-4 w-4 animate-spin" /> : subjectsList.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -90,22 +108,30 @@ const Index: React.FC = () => {
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
-            {filteredStudents.map((student, index) => (
-              <StudentCard 
-                key={student.id} 
-                student={student} 
-                className="animate-scale-in" 
-                style={{ animationDelay: `${index * 0.05}s` }}
-              />
-            ))}
-            
-            {filteredStudents.length === 0 && (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">No students found matching "{searchQuery}"</p>
-              </div>
-            )}
-          </div>
+          {isLoadingStudents ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
+              {filteredStudents.length > 0 ? (
+                filteredStudents.map((student, index) => (
+                  <StudentCard 
+                    key={student.id} 
+                    student={student} 
+                    className="animate-scale-in" 
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground">
+                    {searchQuery ? `No students found matching "${searchQuery}"` : "No students added yet. Add students in the Admin dashboard."}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
