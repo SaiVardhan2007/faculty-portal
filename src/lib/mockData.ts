@@ -1,3 +1,4 @@
+
 import { Student, Faculty, Subject, AttendanceRecord, AuthUser } from './types';
 import { format } from 'date-fns';
 
@@ -5,7 +6,7 @@ import { format } from 'date-fns';
 export const students: Student[] = [
   {
     id: '1',
-    rollNumber: 'O19CS001',
+    roll_number: 'O19CS001',
     name: 'Arun Kumar',
     course: 'B.Tech',
     year: 3,
@@ -13,7 +14,7 @@ export const students: Student[] = [
   },
   {
     id: '2',
-    rollNumber: 'O19CS002',
+    roll_number: 'O19CS002',
     name: 'Priya Singh',
     course: 'B.Tech',
     year: 3,
@@ -21,7 +22,7 @@ export const students: Student[] = [
   },
   {
     id: '3',
-    rollNumber: 'O19CS003',
+    roll_number: 'O19CS003',
     name: 'Rahul Sharma',
     course: 'B.Tech',
     year: 3,
@@ -29,7 +30,7 @@ export const students: Student[] = [
   },
   {
     id: '4',
-    rollNumber: 'O19CS004',
+    roll_number: 'O19CS004',
     name: 'Nisha Patel',
     course: 'B.Tech',
     year: 3,
@@ -37,7 +38,7 @@ export const students: Student[] = [
   },
   {
     id: '5',
-    rollNumber: 'O19CS005',
+    roll_number: 'O19CS005',
     name: 'Vikram Mehra',
     course: 'B.Tech',
     year: 3,
@@ -45,7 +46,7 @@ export const students: Student[] = [
   },
   {
     id: '6',
-    rollNumber: 'O19CS006',
+    roll_number: 'O19CS006',
     name: 'Anjali Desai',
     course: 'B.Tech',
     year: 3,
@@ -53,7 +54,7 @@ export const students: Student[] = [
   },
   {
     id: '7',
-    rollNumber: 'O19CS007',
+    roll_number: 'O19CS007',
     name: 'Sanjay Gupta',
     course: 'B.Tech',
     year: 3,
@@ -61,7 +62,7 @@ export const students: Student[] = [
   },
   {
     id: '8',
-    rollNumber: 'O19CS008',
+    roll_number: 'O19CS008',
     name: 'Kavita Reddy',
     course: 'B.Tech',
     year: 3,
@@ -69,7 +70,7 @@ export const students: Student[] = [
   },
   {
     id: '9',
-    rollNumber: 'O19CS009',
+    roll_number: 'O19CS009',
     name: 'Rohan Kapoor',
     course: 'B.Tech',
     year: 3,
@@ -77,7 +78,7 @@ export const students: Student[] = [
   },
   {
     id: '10',
-    rollNumber: 'O19CS010',
+    roll_number: 'O19CS010',
     name: 'Meera Rajput',
     course: 'B.Tech',
     year: 3,
@@ -111,29 +112,29 @@ export const subjects: Subject[] = [
     id: '1',
     code: 'CS201',
     name: 'Data Structures',
-    facultyId: '2',
-    courseId: '1',
+    faculty_id: '2',
+    course_id: '1',
   },
   {
     id: '2',
     code: 'CS301',
     name: 'Database Systems',
-    facultyId: '1',
-    courseId: '1',
+    faculty_id: '1',
+    course_id: '1',
   },
   {
     id: '3',
     code: 'CS302',
     name: 'Computer Networks',
-    facultyId: '2',
-    courseId: '1',
+    faculty_id: '2',
+    course_id: '1',
   },
   {
     id: '4',
     code: 'CS401',
     name: 'Artificial Intelligence',
-    facultyId: '1',
-    courseId: '1',
+    faculty_id: '1',
+    course_id: '1',
   },
 ];
 
@@ -159,11 +160,11 @@ const generateMockAttendance = (): AttendanceRecord[] => {
         records.push({
           id: `${dateStr}-${student.id}-${subject.id}`,
           date: dateStr,
-          studentId: student.id,
-          subjectId: subject.id,
+          student_id: student.id,
+          subject_id: subject.id,
           status: status as 'present' | 'absent',
-          markedById: subject.facultyId,
-          markedAt: new Date().toISOString(),
+          marked_by_id: subject.faculty_id,
+          marked_at: new Date().toISOString(),
         });
       });
     });

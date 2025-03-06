@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, isToday as dateFnsIsToday } from 'date-fns';
+import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import AttendanceTable from '../components/AttendanceTable';
@@ -102,28 +102,34 @@ const MarkAttendance: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
     
-  // Update stats when attendance data changes
+  // Initialize default attendance to absent for all students when subject changes
   useEffect(() => {
-    if (date && subjectId && students.length > 0) {
-      const presentCount = Object.values(attendanceData).filter(status => status === 'present').length;
+    if (subjectId && students.length > 0) {
+      const defaultAbsentAttendance: Record<string, 'present' | 'absent'> = {};
+      students.forEach(student => {
+        defaultAbsentAttendance[student.id] = 'absent';
+      });
       
+      // Merge with existing attendance data (if any)
+      if (!isLoadingAttendance && Object.keys(existingAttendance).length > 0) {
+        setAttendanceData({...defaultAbsentAttendance, ...existingAttendance});
+      } else {
+        setAttendanceData(defaultAbsentAttendance);
+      }
+      
+      // Update stats
+      const presentCount = Object.values(existingAttendance).filter(status => status === 'present').length;
       setStats({
         totalStudents: students.length,
         presentStudents: presentCount,
         absentStudents: students.length - presentCount
       });
     } else {
+      setAttendanceData({});
       setStats({ totalStudents: 0, presentStudents: 0, absentStudents: 0 });
     }
-  }, [attendanceData, students, date, subjectId]);
+  }, [subjectId, students, existingAttendance, isLoadingAttendance]);
 
-  // Set attendance data from existing records
-  useEffect(() => {
-    if (!isLoadingAttendance && subjectId && date) {
-      setAttendanceData(existingAttendance);
-    }
-  }, [existingAttendance, isLoadingAttendance, subjectId, date]);
-  
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     const newAttendanceData = {
       ...attendanceData,
@@ -131,6 +137,14 @@ const MarkAttendance: React.FC = () => {
     };
     
     setAttendanceData(newAttendanceData);
+    
+    // Update stats immediately
+    const presentCount = Object.values(newAttendanceData).filter(s => s === 'present').length;
+    setStats({
+      totalStudents: students.length,
+      presentStudents: presentCount,
+      absentStudents: students.length - presentCount
+    });
   };
   
   const handleSave = async () => {
@@ -140,7 +154,14 @@ const MarkAttendance: React.FC = () => {
     }
     
     // Check if selected date is today
-    if (!dateFnsIsToday(date)) {
+    const today = new Date();
+    const selectedDate = new Date(date);
+    const isToday = 
+      today.getDate() === selectedDate.getDate() &&
+      today.getMonth() === selectedDate.getMonth() &&
+      today.getFullYear() === selectedDate.getFullYear();
+      
+    if (!isToday) {
       toast.error('You can only mark attendance for today');
       return;
     }
@@ -159,6 +180,9 @@ const MarkAttendance: React.FC = () => {
       
       // Refetch attendance after saving
       refetchAttendance();
+      
+      // Invalidate queries that might depend on attendance data
+      queryClient.invalidateQueries({ queryKey: ['studentAttendance'] });
     } catch (error) {
       console.error('Failed to save attendance:', error);
     } finally {
@@ -172,7 +196,18 @@ const MarkAttendance: React.FC = () => {
     setAttendanceData({});
   };
   
-  const canMarkAttendance = date ? dateFnsIsToday(date) : false;
+  const canMarkAttendance = date ? (
+    (() => {
+      const today = new Date();
+      const selectedDate = new Date(date);
+      return (
+        today.getDate() === selectedDate.getDate() &&
+        today.getMonth() === selectedDate.getMonth() &&
+        today.getFullYear() === selectedDate.getFullYear()
+      );
+    })()
+  ) : false;
+  
   const isLoading = isLoadingStudents || isLoadingSubjects;
   
   return (

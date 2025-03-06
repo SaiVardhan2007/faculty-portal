@@ -1,114 +1,89 @@
 
-import { AttendanceRecord, AttendanceStats } from './types';
-import { attendanceRecords } from './mockData';
+import { supabase } from "@/integrations/supabase/client";
+import { Subject, AttendanceRecord } from "./types";
 
-// Mark attendance for a given date, subject, and list of students
-export const markAttendance = (
-  date: string,
-  subjectId: string,
-  studentStatuses: { studentId: string; status: 'present' | 'absent' }[],
-  markedById: string
-): void => {
-  // In a real app, this would send a request to the backend
-  // For now, we'll update the mock data
-  
-  // Remove any existing records for this date and subject
-  const filtered = attendanceRecords.filter(
-    record => !(record.date === date && record.subjectId === subjectId)
-  );
-  
-  // Add new records
-  studentStatuses.forEach(({ studentId, status }) => {
-    filtered.push({
-      id: `${date}-${studentId}-${subjectId}`,
-      date,
-      studentId,
-      subjectId,
-      status,
-      markedById,
-      markedAt: new Date().toISOString(),
+export async function fetchStudentAttendance(studentId: string) {
+  try {
+    // Get all attendance records for this student
+    const { data: attendanceData, error: attendanceError } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('student_id', studentId);
+    
+    if (attendanceError) throw attendanceError;
+
+    // Get all subjects
+    const { data: subjectsData, error: subjectsError } = await supabase
+      .from('subjects')
+      .select('*');
+    
+    if (subjectsError) throw subjectsError;
+
+    // Process the data to create summary
+    const records = attendanceData as AttendanceRecord[];
+    const subjects = subjectsData as Subject[];
+    
+    // Create a map of subject ids to their details
+    const subjectMap = new Map<string, Subject>();
+    subjects.forEach(subject => {
+      subjectMap.set(subject.id, subject);
     });
-  });
-  
-  // Update the global attendanceRecords array
-  // Note: In a real app, this would be handled by a database
-  attendanceRecords.length = 0;
-  attendanceRecords.push(...filtered);
-  
-  console.log(`Attendance marked for ${date} and subject ${subjectId}`);
-};
-
-// Get attendance records for a specific student
-export const getStudentAttendance = (
-  studentId: string,
-  startDate?: string,
-  endDate?: string
-): AttendanceRecord[] => {
-  let records = attendanceRecords.filter(record => record.studentId === studentId);
-  
-  if (startDate) {
-    records = records.filter(record => record.date >= startDate);
+    
+    // Group attendance records by subject_id
+    const attendanceBySubject = new Map<string, AttendanceRecord[]>();
+    records.forEach(record => {
+      if (!attendanceBySubject.has(record.subject_id)) {
+        attendanceBySubject.set(record.subject_id, []);
+      }
+      attendanceBySubject.get(record.subject_id)?.push(record);
+    });
+    
+    // Calculate statistics for each subject
+    let totalClasses = 0;
+    let totalPresent = 0;
+    
+    const subjectStats = Array.from(attendanceBySubject.entries()).map(([subject_id, subjectRecords]) => {
+      const subject = subjectMap.get(subject_id);
+      if (!subject) return null; // Skip if subject not found
+      
+      const total = subjectRecords.length;
+      const present = subjectRecords.filter(r => r.status === 'present').length;
+      const absent = total - present;
+      const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+      
+      totalClasses += total;
+      totalPresent += present;
+      
+      return {
+        subjectId: subject_id,
+        subjectName: subject.name,
+        subjectCode: subject.code,
+        summary: {
+          totalClasses: total,
+          present: present,
+          absent: absent,
+          percentage: percentage
+        }
+      };
+    }).filter(Boolean);
+    
+    // Calculate overall percentage
+    const overallPercentage = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0;
+    
+    return {
+      overall: {
+        totalClasses,
+        present: totalPresent,
+        absent: totalClasses - totalPresent,
+        percentage: overallPercentage
+      },
+      subjects: subjectStats
+    };
+  } catch (error) {
+    console.error('Error fetching student attendance:', error);
+    return {
+      overall: { totalClasses: 0, present: 0, absent: 0, percentage: 0 },
+      subjects: []
+    };
   }
-  
-  if (endDate) {
-    records = records.filter(record => record.date <= endDate);
-  }
-  
-  return records;
-};
-
-// Calculate attendance percentage for a student
-export const calculateAttendancePercentage = (
-  studentId: string,
-  subjectId?: string
-): number => {
-  const records = attendanceRecords.filter(
-    record => record.studentId === studentId && 
-    (subjectId ? record.subjectId === subjectId : true)
-  );
-  
-  if (records.length === 0) return 0;
-  
-  const present = records.filter(record => record.status === 'present').length;
-  return Math.round((present / records.length) * 100);
-};
-
-// Get attendance records for a specific date and subject
-export const getAttendanceForDateAndSubject = (
-  date: string,
-  subjectId: string
-): AttendanceRecord[] => {
-  return attendanceRecords.filter(
-    record => record.date === date && record.subjectId === subjectId
-  );
-};
-
-// Calculate attendance statistics for a given date and subject
-export const calculateAttendanceStats = (
-  date: string,
-  subjectId: string,
-  totalStudentCount: number
-): AttendanceStats => {
-  const records = getAttendanceForDateAndSubject(date, subjectId);
-  
-  const presentCount = records.filter(record => record.status === 'present').length;
-  const absentCount = records.filter(record => record.status === 'absent').length;
-  
-  return {
-    totalStudents: totalStudentCount,
-    presentStudents: presentCount,
-    absentStudents: absentCount,
-  };
-};
-
-// Check if date is today
-export const isToday = (dateString: string): boolean => {
-  const today = new Date();
-  const date = new Date(dateString);
-  
-  return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
-  );
-};
+}

@@ -39,6 +39,8 @@ const Admin: React.FC = () => {
   const [newSubject, setNewSubject] = useState({
     code: '',
     name: '',
+    faculty_id: '',
+    course_id: 'BTech'
   });
   
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
@@ -57,20 +59,26 @@ const Admin: React.FC = () => {
   const { 
     data: studentsList = [],
     isLoading: isLoadingStudents,
-    error: studentsError
+    error: studentsError,
+    refetch: refetchStudents
   } = useQuery({
     queryKey: ['students'],
-    queryFn: fetchStudents
+    queryFn: fetchStudents,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000 // Auto-refresh every 5 seconds
   });
 
   // Fetch subjects
   const { 
     data: subjectsList = [],
     isLoading: isLoadingSubjects, 
-    error: subjectsError
+    error: subjectsError,
+    refetch: refetchSubjects
   } = useQuery({
     queryKey: ['subjects'],
-    queryFn: fetchSubjects
+    queryFn: fetchSubjects,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000 // Auto-refresh every 5 seconds
   });
   
   // Add student mutation
@@ -78,6 +86,7 @@ const Admin: React.FC = () => {
     mutationFn: addStudent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      refetchStudents(); // Immediately refetch
       setNewStudent({
         roll_number: '',
         name: '',
@@ -95,6 +104,7 @@ const Admin: React.FC = () => {
       updateStudent(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      refetchStudents(); // Immediately refetch
       setEditingStudentId(null);
       toast.success('Student updated successfully');
     }
@@ -105,23 +115,23 @@ const Admin: React.FC = () => {
     mutationFn: deleteStudent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      refetchStudents(); // Immediately refetch
       toast.success('Student deleted successfully');
     }
   });
 
   // Add subject mutation
   const addSubjectMutation = useMutation({
-    mutationFn: (subjectData: { code: string; name: string; }) => 
-      addSubject({
-        ...subjectData,
-        faculty_id: user?.id || '1',
-        course_id: '1'
-      }),
+    mutationFn: (subjectData: { code: string; name: string; faculty_id: string; course_id: string; }) => 
+      addSubject(subjectData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      refetchSubjects(); // Immediately refetch
       setNewSubject({
         code: '',
         name: '',
+        faculty_id: '',
+        course_id: 'BTech'
       });
       toast.success('Subject added successfully');
     }
@@ -130,13 +140,10 @@ const Admin: React.FC = () => {
   // Update subject mutation
   const updateSubjectMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<{ code: string; name: string }> }) => 
-      updateSubject(id, {
-        ...updates,
-        faculty_id: user?.id || '1',
-        course_id: '1'
-      }),
+      updateSubject(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      refetchSubjects(); // Immediately refetch
       setEditingSubjectId(null);
       toast.success('Subject updated successfully');
     }
@@ -147,6 +154,7 @@ const Admin: React.FC = () => {
     mutationFn: deleteSubject,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      refetchSubjects(); // Immediately refetch
       toast.success('Subject deleted successfully');
     }
   });
@@ -154,6 +162,11 @@ const Admin: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'admin') {
       navigate('/');
+    } else if (user) {
+      setNewSubject(prev => ({
+        ...prev,
+        faculty_id: user.id
+      }));
     }
   }, [isAuthenticated, user, navigate]);
   
@@ -172,7 +185,15 @@ const Admin: React.FC = () => {
       return;
     }
     
-    addSubjectMutation.mutate(newSubject);
+    if (!user) {
+      toast.error('You must be logged in to add a subject');
+      return;
+    }
+    
+    addSubjectMutation.mutate({
+      ...newSubject,
+      faculty_id: user.id
+    });
   };
   
   const handleEditStudent = (id: string) => {
