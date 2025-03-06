@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import { Button } from '../components/ui/button';
@@ -9,16 +10,23 @@ import { Label } from '../components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Plus, Trash, Edit, Save } from 'lucide-react';
+import { Plus, Trash, Edit, Save, Loader2 } from 'lucide-react';
 import { toast } from '../lib/toast';
-import { students, subjects } from '../lib/mockData';
+import { 
+  fetchStudents, 
+  fetchSubjects, 
+  addStudent, 
+  updateStudent, 
+  deleteStudent,
+  addSubject,
+  updateSubject,
+  deleteSubject
+} from '../lib/supabaseService';
 
 const Admin: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  
-  const [studentsList, setStudentsList] = useState([...students]);
-  const [subjectsList, setSubjectsList] = useState([...subjects]);
+  const queryClient = useQueryClient();
   
   const [newStudent, setNewStudent] = useState({
     rollNumber: '',
@@ -44,8 +52,106 @@ const Admin: React.FC = () => {
     code: '',
     name: '',
   });
+
+  // Fetch students
+  const { 
+    data: studentsList = [],
+    isLoading: isLoadingStudents,
+    error: studentsError
+  } = useQuery({
+    queryKey: ['students'],
+    queryFn: fetchStudents
+  });
+
+  // Fetch subjects
+  const { 
+    data: subjectsList = [],
+    isLoading: isLoadingSubjects, 
+    error: subjectsError
+  } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: fetchSubjects
+  });
   
-  React.useEffect(() => {
+  // Add student mutation
+  const addStudentMutation = useMutation({
+    mutationFn: addStudent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      setNewStudent({
+        rollNumber: '',
+        name: '',
+        course: 'B.Tech',
+        year: 3,
+        section: 'A'
+      });
+      toast.success('Student added successfully');
+    }
+  });
+
+  // Update student mutation
+  const updateStudentMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ rollNumber: string; name: string }> }) => 
+      updateStudent(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      setEditingStudentId(null);
+      toast.success('Student updated successfully');
+    }
+  });
+
+  // Delete student mutation
+  const deleteStudentMutation = useMutation({
+    mutationFn: deleteStudent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Student deleted successfully');
+    }
+  });
+
+  // Add subject mutation
+  const addSubjectMutation = useMutation({
+    mutationFn: (subjectData: { code: string; name: string; }) => 
+      addSubject({
+        ...subjectData,
+        facultyId: user?.id || '1',
+        courseId: '1'
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      setNewSubject({
+        code: '',
+        name: '',
+      });
+      toast.success('Subject added successfully');
+    }
+  });
+
+  // Update subject mutation
+  const updateSubjectMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ code: string; name: string }> }) => 
+      updateSubject(id, {
+        ...updates,
+        facultyId: user?.id || '1',
+        courseId: '1'
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      setEditingSubjectId(null);
+      toast.success('Subject updated successfully');
+    }
+  });
+
+  // Delete subject mutation
+  const deleteSubjectMutation = useMutation({
+    mutationFn: deleteSubject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast.success('Subject deleted successfully');
+    }
+  });
+  
+  useEffect(() => {
     if (!isAuthenticated || user?.role !== 'admin') {
       navigate('/');
     }
@@ -57,25 +163,7 @@ const Admin: React.FC = () => {
       return;
     }
     
-    const newId = (Math.max(...studentsList.map(s => parseInt(s.id))) + 1).toString();
-    
-    setStudentsList([
-      ...studentsList,
-      {
-        id: newId,
-        ...newStudent
-      }
-    ]);
-    
-    setNewStudent({
-      rollNumber: '',
-      name: '',
-      course: 'B.Tech',
-      year: 3,
-      section: 'A'
-    });
-    
-    toast.success('Student added successfully');
+    addStudentMutation.mutate(newStudent);
   };
   
   const handleAddSubject = () => {
@@ -84,24 +172,7 @@ const Admin: React.FC = () => {
       return;
     }
     
-    const newId = (Math.max(...subjectsList.map(s => parseInt(s.id))) + 1).toString();
-    
-    setSubjectsList([
-      ...subjectsList,
-      {
-        id: newId,
-        ...newSubject,
-        facultyId: user?.id || '1',
-        courseId: '1'
-      }
-    ]);
-    
-    setNewSubject({
-      code: '',
-      name: '',
-    });
-    
-    toast.success('Subject added successfully');
+    addSubjectMutation.mutate(newSubject);
   };
   
   const handleEditStudent = (id: string) => {
@@ -118,21 +189,14 @@ const Admin: React.FC = () => {
   const handleSaveStudent = () => {
     if (!editingStudentId) return;
     
-    setStudentsList(
-      studentsList.map(student => 
-        student.id === editingStudentId 
-          ? { ...student, ...editingStudent }
-          : student
-      )
-    );
-    
-    setEditingStudentId(null);
-    toast.success('Student updated successfully');
+    updateStudentMutation.mutate({
+      id: editingStudentId,
+      updates: editingStudent
+    });
   };
   
   const handleDeleteStudent = (id: string) => {
-    setStudentsList(studentsList.filter(student => student.id !== id));
-    toast.success('Student deleted successfully');
+    deleteStudentMutation.mutate(id);
   };
   
   const handleEditSubject = (id: string) => {
@@ -149,22 +213,27 @@ const Admin: React.FC = () => {
   const handleSaveSubject = () => {
     if (!editingSubjectId) return;
     
-    setSubjectsList(
-      subjectsList.map(subject => 
-        subject.id === editingSubjectId 
-          ? { ...subject, ...editingSubject }
-          : subject
-      )
-    );
-    
-    setEditingSubjectId(null);
-    toast.success('Subject updated successfully');
+    updateSubjectMutation.mutate({
+      id: editingSubjectId,
+      updates: editingSubject
+    });
   };
   
   const handleDeleteSubject = (id: string) => {
-    setSubjectsList(subjectsList.filter(subject => subject.id !== id));
-    toast.success('Subject deleted successfully');
+    deleteSubjectMutation.mutate(id);
   };
+
+  if (studentsError || subjectsError) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <div className="container px-4 py-10 mx-auto text-center">
+          <h1 className="text-2xl font-bold text-red-500">Error loading data</h1>
+          <p className="mt-2 text-muted-foreground">Please try again later</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -210,9 +279,21 @@ const Admin: React.FC = () => {
                       />
                     </div>
                     <div className="md:col-span-2 flex justify-end">
-                      <Button onClick={handleAddStudent}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Student
+                      <Button 
+                        onClick={handleAddStudent} 
+                        disabled={addStudentMutation.isPending}
+                      >
+                        {addStudentMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Student
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -225,57 +306,84 @@ const Admin: React.FC = () => {
                   <CardDescription>Edit or remove existing students</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Roll Number</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {studentsList.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell>
-                            {editingStudentId === student.id ? (
-                              <Input 
-                                value={editingStudent.rollNumber}
-                                onChange={(e) => setEditingStudent({...editingStudent, rollNumber: e.target.value})}
-                              />
-                            ) : (
-                              student.rollNumber
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {editingStudentId === student.id ? (
-                              <Input 
-                                value={editingStudent.name}
-                                onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})}
-                              />
-                            ) : (
-                              student.name
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              {editingStudentId === student.id ? (
-                                <Button size="sm" onClick={handleSaveStudent}>
-                                  <Save className="h-4 w-4" />
-                                </Button>
-                              ) : (
-                                <Button size="sm" variant="outline" onClick={() => handleEditStudent(student.id)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button size="sm" variant="destructive" onClick={() => handleDeleteStudent(student.id)}>
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                  {isLoadingStudents ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : studentsList.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No students found. Add a student to get started.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Roll Number</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {studentsList.map((student) => (
+                          <TableRow key={student.id}>
+                            <TableCell>
+                              {editingStudentId === student.id ? (
+                                <Input 
+                                  value={editingStudent.rollNumber}
+                                  onChange={(e) => setEditingStudent({...editingStudent, rollNumber: e.target.value})}
+                                />
+                              ) : (
+                                student.rollNumber
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {editingStudentId === student.id ? (
+                                <Input 
+                                  value={editingStudent.name}
+                                  onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})}
+                                />
+                              ) : (
+                                student.name
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                {editingStudentId === student.id ? (
+                                  <Button 
+                                    size="sm" 
+                                    onClick={handleSaveStudent}
+                                    disabled={updateStudentMutation.isPending}
+                                  >
+                                    {updateStudentMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Save className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" variant="outline" onClick={() => handleEditStudent(student.id)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  onClick={() => handleDeleteStudent(student.id)}
+                                  disabled={deleteStudentMutation.isPending}
+                                >
+                                  {deleteStudentMutation.isPending && deleteStudentMutation.variables === student.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -305,9 +413,21 @@ const Admin: React.FC = () => {
                       />
                     </div>
                     <div className="md:col-span-2 flex justify-end">
-                      <Button onClick={handleAddSubject}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Subject
+                      <Button 
+                        onClick={handleAddSubject}
+                        disabled={addSubjectMutation.isPending}
+                      >
+                        {addSubjectMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Subject
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -320,57 +440,84 @@ const Admin: React.FC = () => {
                   <CardDescription>Edit or remove existing subjects</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Code</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {subjectsList.map((subject) => (
-                        <TableRow key={subject.id}>
-                          <TableCell>
-                            {editingSubjectId === subject.id ? (
-                              <Input 
-                                value={editingSubject.code}
-                                onChange={(e) => setEditingSubject({...editingSubject, code: e.target.value})}
-                              />
-                            ) : (
-                              subject.code
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {editingSubjectId === subject.id ? (
-                              <Input 
-                                value={editingSubject.name}
-                                onChange={(e) => setEditingSubject({...editingSubject, name: e.target.value})}
-                              />
-                            ) : (
-                              subject.name
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              {editingSubjectId === subject.id ? (
-                                <Button size="sm" onClick={handleSaveSubject}>
-                                  <Save className="h-4 w-4" />
-                                </Button>
-                              ) : (
-                                <Button size="sm" variant="outline" onClick={() => handleEditSubject(subject.id)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button size="sm" variant="destructive" onClick={() => handleDeleteSubject(subject.id)}>
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                  {isLoadingSubjects ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : subjectsList.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No subjects found. Add a subject to get started.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Code</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {subjectsList.map((subject) => (
+                          <TableRow key={subject.id}>
+                            <TableCell>
+                              {editingSubjectId === subject.id ? (
+                                <Input 
+                                  value={editingSubject.code}
+                                  onChange={(e) => setEditingSubject({...editingSubject, code: e.target.value})}
+                                />
+                              ) : (
+                                subject.code
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {editingSubjectId === subject.id ? (
+                                <Input 
+                                  value={editingSubject.name}
+                                  onChange={(e) => setEditingSubject({...editingSubject, name: e.target.value})}
+                                />
+                              ) : (
+                                subject.name
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                {editingSubjectId === subject.id ? (
+                                  <Button 
+                                    size="sm" 
+                                    onClick={handleSaveSubject}
+                                    disabled={updateSubjectMutation.isPending}
+                                  >
+                                    {updateSubjectMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Save className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" variant="outline" onClick={() => handleEditSubject(subject.id)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  onClick={() => handleDeleteSubject(subject.id)}
+                                  disabled={deleteSubjectMutation.isPending}
+                                >
+                                  {deleteSubjectMutation.isPending && deleteSubjectMutation.variables === subject.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

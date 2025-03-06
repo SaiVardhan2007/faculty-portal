@@ -2,7 +2,7 @@
 // Core data models
 export interface Student {
   id: string;
-  rollNumber: string;
+  roll_number: string;
   name: string;
   course: string;
   year: number;
@@ -23,18 +23,18 @@ export interface Subject {
   id: string;
   code: string;
   name: string;
-  facultyId: string;
-  courseId: string;
+  faculty_id: string;
+  course_id: string;
 }
 
 export interface AttendanceRecord {
   id: string;
   date: string;
-  studentId: string;
-  subjectId: string;
+  student_id: string;
+  subject_id: string;
   status: 'present' | 'absent';
-  markedById: string;
-  markedAt: string;
+  marked_by_id: string;
+  marked_at: string;
 }
 
 export interface AttendanceSummary {
@@ -70,4 +70,34 @@ export interface AttendanceStats {
   totalStudents: number;
   presentStudents: number;
   absentStudents: number;
+}
+
+// Database types to match Supabase schema
+export type DbStudent = {
+  id: string;
+  roll_number: string;
+  name: string;
+  course: string;
+  year: number;
+  section: string;
+  created_at: string;
+}
+
+export type DbSubject = {
+  id: string;
+  code: string;
+  name: string;
+  faculty_id: string;
+  course_id: string;
+  created_at: string;
+}
+
+export type DbAttendanceRecord = {
+  id: string;
+  date: string;
+  student_id: string;
+  subject_id: string;
+  status: 'present' | 'absent';
+  marked_by_id: string;
+  marked_at: string;
 }

@@ -9,7 +9,135 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      attendance_records: {
+        Row: {
+          date: string
+          id: string
+          marked_at: string
+          marked_by_id: string
+          status: string
+          student_id: string
+          subject_id: string
+        }
+        Insert: {
+          date: string
+          id?: string
+          marked_at?: string
+          marked_by_id: string
+          status: string
+          student_id: string
+          subject_id: string
+        }
+        Update: {
+          date?: string
+          id?: string
+          marked_at?: string
+          marked_by_id?: string
+          status?: string
+          student_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_credentials: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          password: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          password: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          password?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          course: string
+          created_at: string
+          id: string
+          name: string
+          roll_number: string
+          section: string
+          year: number
+        }
+        Insert: {
+          course?: string
+          created_at?: string
+          id?: string
+          name: string
+          roll_number: string
+          section?: string
+          year?: number
+        }
+        Update: {
+          course?: string
+          created_at?: string
+          id?: string
+          name?: string
+          roll_number?: string
+          section?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          code: string
+          course_id: string
+          created_at: string
+          faculty_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          code: string
+          course_id?: string
+          created_at?: string
+          faculty_id: string
+          id?: string
+          name: string
+        }
+        Update: {
+          code?: string
+          course_id?: string
+          created_at?: string
+          faculty_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

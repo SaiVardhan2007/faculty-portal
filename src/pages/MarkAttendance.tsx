@@ -2,9 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday as dateFnsIsToday } from 'date-fns';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { students, subjects, faculty } from '../lib/mockData';
-import { markAttendance, calculateAttendanceStats, getAttendanceForDateAndSubject, isToday } from '../lib/attendanceUtils';
 import AttendanceTable from '../components/AttendanceTable';
 import AttendanceStats from '../components/AttendanceStats';
 import Header from '../components/Header';
@@ -14,61 +13,115 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { CalendarIcon, LucideLoader2, Save, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, AlertCircle } from 'lucide-react';
 import { toast } from '../lib/toast';
 import { cn } from '../lib/utils';
+import { 
+  fetchStudents, 
+  fetchSubjects, 
+  fetchAttendanceRecords, 
+  saveAttendance, 
+  calculateAttendanceStats 
+} from '../lib/supabaseService';
 
 const MarkAttendance: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [subjectId, setSubjectId] = useState<string>('');
   const [attendanceData, setAttendanceData] = useState<Record<string, 'present' | 'absent'>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [stats, setStats] = useState({ totalStudents: students.length, presentStudents: 0, absentStudents: 0 });
+  const [stats, setStats] = useState({ totalStudents: 0, presentStudents: 0, absentStudents: 0 });
   
-  // Get faculty's subjects
-  const facultyMember = faculty.find(f => f.id === user?.id);
-  const facultySubjects = subjects.filter(s => 
-    facultyMember?.subjects.includes(s.code)
-  );
+  // Get all students
+  const { 
+    data: students = [], 
+    isLoading: isLoadingStudents 
+  } = useQuery({
+    queryKey: ['students'],
+    queryFn: fetchStudents
+  });
+  
+  // Get all subjects
+  const { 
+    data: subjects = [], 
+    isLoading: isLoadingSubjects 
+  } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: fetchSubjects
+  });
+
+  // Get existing attendance records for selected date and subject
+  const { 
+    data: existingAttendance = {},
+    isLoading: isLoadingAttendance,
+    refetch: refetchAttendance
+  } = useQuery({
+    queryKey: ['attendance', date ? format(date, 'yyyy-MM-dd') : '', subjectId],
+    queryFn: () => fetchAttendanceRecords(
+      date ? format(date, 'yyyy-MM-dd') : '', 
+      subjectId
+    ),
+    enabled: !!date && !!subjectId,
+  });
+
+  // Save attendance mutation
+  const saveAttendanceMutation = useMutation({
+    mutationFn: ({
+      date,
+      subjectId,
+      attendanceData,
+      userId
+    }: {
+      date: string;
+      subjectId: string;
+      attendanceData: Record<string, 'present' | 'absent'>;
+      userId: string;
+    }) => {
+      const studentStatuses = students.map(student => ({
+        studentId: student.id,
+        status: attendanceData[student.id] || 'absent'
+      }));
+      
+      return saveAttendance(date, subjectId, studentStatuses, userId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['attendance', date ? format(date, 'yyyy-MM-dd') : '', subjectId] 
+      });
+      toast.success('Attendance saved successfully');
+    }
+  });
   
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
-  
-  // Set default subject
+    
+  // Update stats when attendance data changes
   useEffect(() => {
-    if (facultySubjects.length > 0 && !subjectId) {
-      setSubjectId(facultySubjects[0].id);
-    }
-  }, [facultySubjects, subjectId]);
-  
-  // Load existing attendance data when subject or date changes
-  useEffect(() => {
-    if (date && subjectId) {
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const records = getAttendanceForDateAndSubject(dateStr, subjectId);
+    if (date && subjectId && students.length > 0) {
+      const presentCount = Object.values(attendanceData).filter(status => status === 'present').length;
       
-      // Convert records to attendanceData format
-      const newAttendanceData: Record<string, 'present' | 'absent'> = {};
-      records.forEach(record => {
-        newAttendanceData[record.studentId] = record.status;
+      setStats({
+        totalStudents: students.length,
+        presentStudents: presentCount,
+        absentStudents: students.length - presentCount
       });
-      
-      setAttendanceData(newAttendanceData);
-      
-      // Update stats
-      const newStats = calculateAttendanceStats(dateStr, subjectId, students.length);
-      setStats(newStats);
     } else {
-      setAttendanceData({});
-      setStats({ totalStudents: students.length, presentStudents: 0, absentStudents: 0 });
+      setStats({ totalStudents: 0, presentStudents: 0, absentStudents: 0 });
     }
-  }, [subjectId, date]);
+  }, [attendanceData, students, date, subjectId]);
+
+  // Set attendance data from existing records
+  useEffect(() => {
+    if (!isLoadingAttendance && subjectId && date) {
+      setAttendanceData(existingAttendance);
+    }
+  }, [existingAttendance, isLoadingAttendance, subjectId, date]);
   
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     const newAttendanceData = {
@@ -77,15 +130,6 @@ const MarkAttendance: React.FC = () => {
     };
     
     setAttendanceData(newAttendanceData);
-    
-    // Update stats in real-time
-    const presentCount = Object.values(newAttendanceData).filter(s => s === 'present').length;
-    
-    setStats({
-      totalStudents: students.length,
-      presentStudents: presentCount,
-      absentStudents: students.length - presentCount
-    });
   };
   
   const handleSave = async () => {
@@ -102,35 +146,33 @@ const MarkAttendance: React.FC = () => {
     
     const dateStr = format(date, 'yyyy-MM-dd');
     
-    // Prepare student statuses
-    const studentStatuses = Object.entries(attendanceData).map(([studentId, status]) => ({
-      studentId,
-      status
-    }));
-    
-    // If some students don't have attendance marked, mark them absent by default
-    const allStudentStatuses = students.map(student => {
-      const existingStatus = studentStatuses.find(s => s.studentId === student.id);
-      return existingStatus || { studentId: student.id, status: 'absent' as const };
-    });
-    
     setIsSaving(true);
     
     try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await saveAttendanceMutation.mutateAsync({
+        date: dateStr,
+        subjectId,
+        attendanceData,
+        userId: user.id
+      });
       
-      markAttendance(dateStr, subjectId, allStudentStatuses, user.id);
-      
-      toast.success('Attendance saved successfully');
+      // Refetch attendance after saving
+      refetchAttendance();
     } catch (error) {
-      toast.error('Failed to save attendance');
+      console.error('Failed to save attendance:', error);
     } finally {
       setIsSaving(false);
     }
   };
   
+  const handleSubjectChange = (value: string) => {
+    setSubjectId(value);
+    // Reset attendance data when subject changes
+    setAttendanceData({});
+  };
+  
   const canMarkAttendance = date ? isToday(format(date, 'yyyy-MM-dd')) : false;
+  const isLoading = isLoadingStudents || isLoadingSubjects;
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -154,16 +196,26 @@ const MarkAttendance: React.FC = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Subject</label>
-                  <Select value={subjectId} onValueChange={setSubjectId}>
+                  <Select value={subjectId} onValueChange={handleSubjectChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
                     <SelectContent>
-                      {facultySubjects.map(subject => (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          {subject.code} - {subject.name}
-                        </SelectItem>
-                      ))}
+                      {isLoadingSubjects ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : subjects.length === 0 ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          No subjects available
+                        </div>
+                      ) : (
+                        subjects.map(subject => (
+                          <SelectItem key={subject.id} value={subject.id}>
+                            {subject.code} - {subject.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -215,11 +267,11 @@ const MarkAttendance: React.FC = () => {
                 {canMarkAttendance && (
                   <Button 
                     onClick={handleSave} 
-                    disabled={isSaving || Object.keys(attendanceData).length === 0}
+                    disabled={isSaving || students.length === 0}
                   >
                     {isSaving ? (
                       <>
-                        <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Saving...
                       </>
                     ) : (
@@ -232,14 +284,24 @@ const MarkAttendance: React.FC = () => {
                 )}
               </div>
               
-              <AttendanceTable
-                students={students}
-                date={format(date, 'yyyy-MM-dd')}
-                subjectId={subjectId}
-                onAttendanceChange={handleAttendanceChange}
-                initialAttendance={attendanceData}
-                readOnly={!canMarkAttendance}
-              />
+              {isLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : students.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No students found. Please add students in the admin panel.
+                </div>
+              ) : (
+                <AttendanceTable
+                  students={students}
+                  date={format(date, 'yyyy-MM-dd')}
+                  subjectId={subjectId}
+                  onAttendanceChange={handleAttendanceChange}
+                  initialAttendance={attendanceData}
+                  readOnly={!canMarkAttendance}
+                />
+              )}
             </div>
           )}
         </div>

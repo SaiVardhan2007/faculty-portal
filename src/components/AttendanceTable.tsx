@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Student } from '../lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { cn } from '../lib/utils';
@@ -25,6 +25,11 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     initialAttendance || {}
   );
 
+  // Update attendance when initialAttendance changes
+  useEffect(() => {
+    setAttendance(initialAttendance || {});
+  }, [initialAttendance]);
+
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     if (readOnly) return;
     
@@ -48,7 +53,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
         </TableHeader>
         <TableBody>
           {students.map((student) => {
-            const status = attendance[student.id] || 'absent';
+            const status = attendance[student.id];
             return (
               <TableRow key={student.id} className="h-16">
                 <TableCell className="font-medium">{student.rollNumber}</TableCell>
@@ -63,7 +68,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                         "px-4 py-2 rounded transition-colors text-sm font-medium",
                         status === 'present'
                           ? "bg-emerald-500 text-white"
-                          : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+                          : "bg-transparent border border-emerald-500 text-emerald-700 hover:bg-emerald-100",
                         readOnly && "pointer-events-none opacity-70"
                       )}
                       disabled={readOnly}
@@ -77,7 +82,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                         "px-4 py-2 rounded transition-colors text-sm font-medium",
                         status === 'absent'
                           ? "bg-red-500 text-white"
-                          : "bg-red-100 text-red-700 hover:bg-red-200",
+                          : "bg-transparent border border-red-500 text-red-700 hover:bg-red-100",
                         readOnly && "pointer-events-none opacity-70"
                       )}
                       disabled={readOnly}
