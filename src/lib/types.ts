@@ -64,3 +64,10 @@ export interface AuthUser {
   role: 'faculty' | 'admin';
   name: string;
 }
+
+// Added new interface for attendance stats
+export interface AttendanceStats {
+  totalStudents: number;
+  presentStudents: number;
+  absentStudents: number;
+}

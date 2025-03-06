@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { LucideLogOut, LucideUserCircle2 } from 'lucide-react';
+import { LogOut, Settings, UserCircle2 } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -18,6 +18,10 @@ const Header: React.FC = () => {
     logout();
     navigate('/');
   };
+
+  const handleAdminSettings = () => {
+    navigate('/admin');
+  };
   
   return (
     <header className="sticky top-0 z-50 w-full border-b backdrop-blur-lg bg-background/80 border-border">
@@ -26,7 +30,7 @@ const Header: React.FC = () => {
           <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">A</span>
           </div>
-          <span className="font-medium text-lg">Attendance Portal</span>
+          <span className="font-medium text-lg">RGUKT-ONG Attendance</span>
         </Link>
         
         <nav className="hidden md:flex items-center gap-6 text-sm">
@@ -48,6 +52,16 @@ const Header: React.FC = () => {
               Mark Attendance
             </Link>
           )}
+          {isAuthenticated && user?.role === 'admin' && (
+            <Link 
+              to="/admin" 
+              className={`transition-colors hover:text-foreground ${
+                location.pathname === '/admin' ? 'text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              Admin Dashboard
+            </Link>
+          )}
         </nav>
         
         <div className="flex items-center gap-2">
@@ -55,15 +69,22 @@ const Header: React.FC = () => {
             <div className="flex items-center gap-4">
               <div className="hidden md:flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <LucideUserCircle2 className="h-5 w-5 text-primary" />
+                  <UserCircle2 className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">{user?.name}</span>
-                  <span className="text-xs text-muted-foreground">Faculty</span>
+                  <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
                 </div>
               </div>
+              
+              {user?.role === 'admin' && (
+                <Button variant="outline" size="icon" onClick={handleAdminSettings} className="mr-2">
+                  <Settings className="h-5 w-5" />
+                </Button>
+              )}
+              
               <Button variant="ghost" size="icon" onClick={handleLogout}>
-                <LucideLogOut className="h-5 w-5" />
+                <LogOut className="h-5 w-5" />
               </Button>
             </div>
           ) : (

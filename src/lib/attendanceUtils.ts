@@ -1,5 +1,5 @@
 
-import { AttendanceRecord } from './types';
+import { AttendanceRecord, AttendanceStats } from './types';
 import { attendanceRecords } from './mockData';
 
 // Mark attendance for a given date, subject, and list of students
@@ -71,4 +71,44 @@ export const calculateAttendancePercentage = (
   
   const present = records.filter(record => record.status === 'present').length;
   return Math.round((present / records.length) * 100);
+};
+
+// Get attendance records for a specific date and subject
+export const getAttendanceForDateAndSubject = (
+  date: string,
+  subjectId: string
+): AttendanceRecord[] => {
+  return attendanceRecords.filter(
+    record => record.date === date && record.subjectId === subjectId
+  );
+};
+
+// Calculate attendance statistics for a given date and subject
+export const calculateAttendanceStats = (
+  date: string,
+  subjectId: string,
+  totalStudentCount: number
+): AttendanceStats => {
+  const records = getAttendanceForDateAndSubject(date, subjectId);
+  
+  const presentCount = records.filter(record => record.status === 'present').length;
+  const absentCount = records.filter(record => record.status === 'absent').length;
+  
+  return {
+    totalStudents: totalStudentCount,
+    presentStudents: presentCount,
+    absentStudents: absentCount,
+  };
+};
+
+// Check if date is today
+export const isToday = (dateString: string): boolean => {
+  const today = new Date();
+  const date = new Date(dateString);
+  
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
 };

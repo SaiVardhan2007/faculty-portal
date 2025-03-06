@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Student } from '../lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Check, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface AttendanceTableProps {
@@ -11,6 +10,7 @@ interface AttendanceTableProps {
   subjectId: string;
   onAttendanceChange: (studentId: string, status: 'present' | 'absent') => void;
   initialAttendance?: Record<string, 'present' | 'absent'>;
+  readOnly?: boolean;
 }
 
 const AttendanceTable: React.FC<AttendanceTableProps> = ({
@@ -18,13 +18,16 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
   date,
   subjectId,
   onAttendanceChange,
-  initialAttendance = {}
+  initialAttendance = {},
+  readOnly = false
 }) => {
   const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent'>>(
     initialAttendance || {}
   );
 
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
+    if (readOnly) return;
+    
     const newAttendance = {
       ...attendance,
       [studentId]: status
@@ -38,7 +41,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[80px]">Roll No.</TableHead>
+            <TableHead className="w-[100px]">Roll No.</TableHead>
             <TableHead>Name</TableHead>
             <TableHead className="text-right">Attendance</TableHead>
           </TableRow>
@@ -50,42 +53,37 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
               <TableRow key={student.id} className="h-16">
                 <TableCell className="font-medium">{student.rollNumber}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full overflow-hidden">
-                      <img
-                        src={student.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`}
-                        alt={student.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <span>{student.name}</span>
-                  </div>
+                  <span>{student.name}</span>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => handleAttendanceChange(student.id, 'present')}
                       className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center transition-colors",
+                        "px-4 py-2 rounded transition-colors text-sm font-medium",
                         status === 'present'
                           ? "bg-emerald-500 text-white"
-                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                          : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+                        readOnly && "pointer-events-none opacity-70"
                       )}
+                      disabled={readOnly}
                       aria-label="Mark as present"
                     >
-                      <Check className="h-4 w-4" />
+                      Present
                     </button>
                     <button
                       onClick={() => handleAttendanceChange(student.id, 'absent')}
                       className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center transition-colors",
+                        "px-4 py-2 rounded transition-colors text-sm font-medium",
                         status === 'absent'
                           ? "bg-red-500 text-white"
-                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                          : "bg-red-100 text-red-700 hover:bg-red-200",
+                        readOnly && "pointer-events-none opacity-70"
                       )}
+                      disabled={readOnly}
                       aria-label="Mark as absent"
                     >
-                      <X className="h-4 w-4" />
+                      Absent
                     </button>
                   </div>
                 </TableCell>

@@ -1,18 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, isToday as dateFnsIsToday } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { students, subjects, faculty } from '../lib/mockData';
-import { markAttendance } from '../lib/attendanceUtils';
+import { markAttendance, calculateAttendanceStats, getAttendanceForDateAndSubject, isToday } from '../lib/attendanceUtils';
 import AttendanceTable from '../components/AttendanceTable';
+import AttendanceStats from '../components/AttendanceStats';
 import Header from '../components/Header';
 import { Button } from '../components/ui/button';
 import { Calendar } from '../components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { CalendarIcon, LucideLoader2, Save } from 'lucide-react';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { CalendarIcon, LucideLoader2, Save, AlertCircle } from 'lucide-react';
 import { toast } from '../lib/toast';
 import { cn } from '../lib/utils';
 
@@ -24,6 +26,7 @@ const MarkAttendance: React.FC = () => {
   const [subjectId, setSubjectId] = useState<string>('');
   const [attendanceData, setAttendanceData] = useState<Record<string, 'present' | 'absent'>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [stats, setStats] = useState({ totalStudents: students.length, presentStudents: 0, absentStudents: 0 });
   
   // Get faculty's subjects
   const facultyMember = faculty.find(f => f.id === user?.id);
@@ -44,21 +47,56 @@ const MarkAttendance: React.FC = () => {
     }
   }, [facultySubjects, subjectId]);
   
-  // Reset attendance data when subject or date changes
+  // Load existing attendance data when subject or date changes
   useEffect(() => {
-    setAttendanceData({});
+    if (date && subjectId) {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const records = getAttendanceForDateAndSubject(dateStr, subjectId);
+      
+      // Convert records to attendanceData format
+      const newAttendanceData: Record<string, 'present' | 'absent'> = {};
+      records.forEach(record => {
+        newAttendanceData[record.studentId] = record.status;
+      });
+      
+      setAttendanceData(newAttendanceData);
+      
+      // Update stats
+      const newStats = calculateAttendanceStats(dateStr, subjectId, students.length);
+      setStats(newStats);
+    } else {
+      setAttendanceData({});
+      setStats({ totalStudents: students.length, presentStudents: 0, absentStudents: 0 });
+    }
   }, [subjectId, date]);
   
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
-    setAttendanceData(prev => ({
-      ...prev,
+    const newAttendanceData = {
+      ...attendanceData,
       [studentId]: status
-    }));
+    };
+    
+    setAttendanceData(newAttendanceData);
+    
+    // Update stats in real-time
+    const presentCount = Object.values(newAttendanceData).filter(s => s === 'present').length;
+    
+    setStats({
+      totalStudents: students.length,
+      presentStudents: presentCount,
+      absentStudents: students.length - presentCount
+    });
   };
   
   const handleSave = async () => {
     if (!date || !subjectId || !user) {
       toast.error('Please select date and subject');
+      return;
+    }
+    
+    // Check if selected date is today
+    if (!dateFnsIsToday(date)) {
+      toast.error('You can only mark attendance for today');
       return;
     }
     
@@ -85,15 +123,14 @@ const MarkAttendance: React.FC = () => {
       markAttendance(dateStr, subjectId, allStudentStatuses, user.id);
       
       toast.success('Attendance saved successfully');
-      
-      // Reset state
-      setAttendanceData({});
     } catch (error) {
       toast.error('Failed to save attendance');
     } finally {
       setIsSaving(false);
     }
   };
+  
+  const canMarkAttendance = date ? isToday(format(date, 'yyyy-MM-dd')) : false;
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -162,24 +199,37 @@ const MarkAttendance: React.FC = () => {
           
           {subjectId && date && (
             <div className="space-y-6 animate-slide-up">
+              {!canMarkAttendance && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You can only mark attendance for today. For past or future dates, you can only view the attendance.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <AttendanceStats {...stats} />
+              
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Student Attendance</h2>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={isSaving || Object.keys(attendanceData).length === 0}
-                >
-                  {isSaving ? (
-                    <>
-                      <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Attendance
-                    </>
-                  )}
-                </Button>
+                {canMarkAttendance && (
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={isSaving || Object.keys(attendanceData).length === 0}
+                  >
+                    {isSaving ? (
+                      <>
+                        <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Attendance
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
               
               <AttendanceTable
@@ -188,6 +238,7 @@ const MarkAttendance: React.FC = () => {
                 subjectId={subjectId}
                 onAttendanceChange={handleAttendanceChange}
                 initialAttendance={attendanceData}
+                readOnly={!canMarkAttendance}
               />
             </div>
           )}
