@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Student } from '../lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { cn } from '../lib/utils';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 interface AttendanceTableProps {
   students: Student[];
@@ -67,14 +68,17 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
               <TableRow key={student.id} className="h-16">
                 <TableCell className="font-medium">{student.roll_number}</TableCell>
                 <TableCell>
-                  <span>{student.name}</span>
+                  <span className="font-medium">{student.name}</span>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {student.course} • Year {student.year} • Section {student.section}
+                  </p>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => handleAttendanceChange(student.id, 'present')}
                       className={cn(
-                        "px-4 py-2 rounded transition-colors text-sm font-medium",
+                        "px-4 py-2 rounded transition-colors text-sm font-medium flex items-center",
                         status === 'present'
                           ? "bg-emerald-500 text-white"
                           : "bg-transparent border border-emerald-500 text-emerald-700 hover:bg-emerald-100",
@@ -83,12 +87,13 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                       disabled={readOnly}
                       aria-label="Mark as present"
                     >
+                      <CheckCircle className="mr-1 h-4 w-4" />
                       Present
                     </button>
                     <button
                       onClick={() => handleAttendanceChange(student.id, 'absent')}
                       className={cn(
-                        "px-4 py-2 rounded transition-colors text-sm font-medium",
+                        "px-4 py-2 rounded transition-colors text-sm font-medium flex items-center",
                         status === 'absent'
                           ? "bg-red-500 text-white"
                           : "bg-transparent border border-red-500 text-red-700 hover:bg-red-100",
@@ -97,6 +102,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                       disabled={readOnly}
                       aria-label="Mark as absent"
                     >
+                      <XCircle className="mr-1 h-4 w-4" />
                       Absent
                     </button>
                   </div>

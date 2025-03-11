@@ -215,6 +215,7 @@ const MarkAttendance: React.FC = () => {
       refetchAttendance();
     } catch (error) {
       console.error('Failed to save attendance:', error);
+      toast.error('Failed to save attendance');
     } finally {
       setIsSaving(false);
     }
