@@ -39,9 +39,13 @@ const ProtectedRoute = ({
 
 // Main application with routes
 const AppRoutes = () => {
+  const { isAuthenticated, user } = useAuth();
+
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={
+        isAuthenticated ? <Navigate to="/" replace /> : <Login />
+      } />
       <Route path="/" element={<Index />} />
       <Route path="/student/:id" element={<StudentDetails />} />
       <Route 

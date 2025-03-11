@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -8,7 +8,7 @@ import SubjectAttendanceCard from '../components/SubjectAttendanceCard';
 import { ArrowLeft, CalendarDays, ClipboardList, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchStudents, fetchSubjects, getStudentAttendanceSummary } from '../lib/supabaseService';
-import { Student, Subject, AttendanceSummary, SubjectAttendance } from '../lib/types';
+import { AttendanceSummary } from '../lib/types';
 import { Loader2 } from 'lucide-react';
 
 const StudentDetails: React.FC = () => {
@@ -51,7 +51,7 @@ const StudentDetails: React.FC = () => {
   };
   
   // Calculate attendance summaries
-  const calculateSubjectAttendance = (): SubjectAttendance[] => {
+  const calculateSubjectAttendance = () => {
     if (!attendanceData || !subjects) return [];
     
     return subjects.map(subject => {
