@@ -23,6 +23,22 @@ const Header: React.FC = () => {
     navigate('/admin');
   };
   
+  // Function to check if user has permission to view a page
+  const canViewPage = (page: 'students' | 'markAttendance' | 'admin') => {
+    if (!isAuthenticated || !user) return false;
+    
+    switch (page) {
+      case 'students':
+        return user.role === 'faculty' || user.role === 'admin';
+      case 'markAttendance':
+        return user.role === 'faculty';
+      case 'admin':
+        return user.role === 'admin';
+      default:
+        return false;
+    }
+  };
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b backdrop-blur-lg bg-background/80 border-border">
       <div className="container flex items-center justify-between h-16 px-4 md:px-6">
@@ -34,15 +50,18 @@ const Header: React.FC = () => {
         </Link>
         
         <nav className="hidden md:flex items-center gap-6 text-sm">
-          <Link 
-            to="/" 
-            className={`transition-colors hover:text-foreground ${
-              location.pathname === '/' ? 'text-foreground' : 'text-muted-foreground'
-            }`}
-          >
-            Students
-          </Link>
-          {isAuthenticated && (
+          {canViewPage('students') && (
+            <Link 
+              to="/" 
+              className={`transition-colors hover:text-foreground ${
+                location.pathname === '/' ? 'text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              Students
+            </Link>
+          )}
+          
+          {canViewPage('markAttendance') && (
             <Link 
               to="/mark-attendance" 
               className={`transition-colors hover:text-foreground ${
@@ -52,7 +71,8 @@ const Header: React.FC = () => {
               Mark Attendance
             </Link>
           )}
-          {isAuthenticated && user?.role === 'admin' && (
+          
+          {canViewPage('admin') && (
             <Link 
               to="/admin" 
               className={`transition-colors hover:text-foreground ${

@@ -201,8 +201,8 @@ const StudentDetails: React.FC = () => {
                     {subjectAttendance.map((subject) => (
                       <SubjectAttendanceCard 
                         key={subject.subjectId}
-                        subjectName={subject.subjectName}
-                        subjectCode={subject.subjectCode}
+                        subject={subject.subjectName}
+                        code={subject.subjectCode}
                         attendance={subject.summary}
                       />
                     ))}

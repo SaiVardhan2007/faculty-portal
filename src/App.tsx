@@ -3,8 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import StudentDetails from "./pages/StudentDetails";
 import Login from "./pages/Login";
@@ -14,6 +14,59 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Route guard for protected routes
+const ProtectedRoute = ({ 
+  element, 
+  allowedRoles = [],
+  redirectTo = '/login'
+}: { 
+  element: React.ReactNode; 
+  allowedRoles?: string[];
+  redirectTo?: string;
+}) => {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to={redirectTo} replace />;
+  }
+  
+  if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{element}</>;
+};
+
+// Main application with routes
+const AppRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<Index />} />
+      <Route path="/student/:id" element={<StudentDetails />} />
+      <Route 
+        path="/mark-attendance" 
+        element={
+          <ProtectedRoute 
+            element={<MarkAttendance />} 
+            allowedRoles={['faculty']} 
+          />
+        } 
+      />
+      <Route 
+        path="/admin" 
+        element={
+          <ProtectedRoute 
+            element={<Admin />} 
+            allowedRoles={['admin']} 
+          />
+        } 
+      />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -21,14 +74,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/student/:id" element={<StudentDetails />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/mark-attendance" element={<MarkAttendance />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppRoutes />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
