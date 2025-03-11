@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { fetchStudents, fetchSubjects } from '../lib/supabaseService';
+import { fetchStudents, fetchSubjects, calculateWorkingDays } from '../lib/supabaseService';
 import StudentCard from '../components/StudentCard';
 import { Input } from '../components/ui/input';
 import Header from '../components/Header';
@@ -15,20 +15,31 @@ const Index: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   
-  // Fetch students from Supabase
+  // Fetch students from Supabase with more frequent refetching
   const { data: studentsList = [], isLoading: isLoadingStudents } = useQuery({
     queryKey: ['students'],
     queryFn: fetchStudents,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 3000 // Auto-refresh every 3 seconds
   });
   
-  // Fetch subjects from Supabase
+  // Fetch subjects from Supabase with more frequent refetching
   const { data: subjectsList = [], isLoading: isLoadingSubjects } = useQuery({
     queryKey: ['subjects'],
     queryFn: fetchSubjects,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 3000 // Auto-refresh every 3 seconds
+  });
+  
+  // Fetch working days count
+  const { data: workingDays = 0, isLoading: isLoadingWorkingDays } = useQuery({
+    queryKey: ['workingDays'],
+    queryFn: calculateWorkingDays,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 3000 // Auto-refresh every 3 seconds
   });
   
   const filteredStudents = studentsList.filter(student => 
@@ -73,7 +84,7 @@ const Index: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-medium">Working Days</h3>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{isLoadingWorkingDays ? <Loader2 className="h-4 w-4 animate-spin" /> : workingDays}</p>
                 </div>
               </CardContent>
             </Card>

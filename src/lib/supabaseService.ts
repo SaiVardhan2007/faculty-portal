@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Student, Subject, AttendanceRecord, DbStudent, DbSubject, DbAttendanceRecord, AttendanceStats } from "./types";
 import { toast } from "./toast";
@@ -26,7 +25,7 @@ export const mapStudentToDbStudent = (student: Partial<Student>): Partial<DbStud
 // Convert DB subject to app subject model
 export const mapDbSubjectToSubject = (dbSubject: DbSubject): Subject => ({
   id: dbSubject.id,
-  code: dbSubject.code,
+  code: dbSubject.code || `SUB${Math.floor(Math.random() * 1000)}`,
   name: dbSubject.name,
   faculty_id: dbSubject.faculty_id,
   course_id: dbSubject.course_id
@@ -65,12 +64,6 @@ export const fetchStudents = async (): Promise<Student[]> => {
 export const addStudent = async (student: Omit<Student, 'id'>): Promise<Student | null> => {
   try {
     console.log('Adding student:', student);
-    
-    // Enable RLS for the public schema to bypass security policies temporarily
-    const { error: rpcError } = await supabase.rpc('disable_rls');
-    if (rpcError) {
-      console.warn('Failed to disable RLS, proceeding with normal insert:', rpcError);
-    }
     
     const { data, error } = await supabase
       .from('students')
@@ -148,7 +141,7 @@ export const fetchSubjects = async (): Promise<Subject[]> => {
     const { data, error } = await supabase
       .from('subjects')
       .select('*')
-      .order('code', { ascending: true });
+      .order('name', { ascending: true });
     
     if (error) {
       console.error('Error fetching subjects:', error);
@@ -163,20 +156,16 @@ export const fetchSubjects = async (): Promise<Subject[]> => {
   }
 };
 
-export const addSubject = async (subject: Omit<Subject, 'id'>): Promise<Subject | null> => {
+export const addSubject = async (subject: { name: string; faculty_id: string; course_id: string }): Promise<Subject | null> => {
   try {
     console.log('Adding subject:', subject);
     
-    // Enable RLS for the public schema to bypass security policies temporarily
-    const { error: rpcError } = await supabase.rpc('disable_rls');
-    if (rpcError) {
-      console.warn('Failed to disable RLS, proceeding with normal insert:', rpcError);
-    }
+    const code = `SUB${Math.floor(Math.random() * 1000)}`;
     
     const { data, error } = await supabase
       .from('subjects')
       .insert({
-        code: subject.code,
+        code,
         name: subject.name,
         faculty_id: subject.faculty_id,
         course_id: subject.course_id
@@ -273,14 +262,12 @@ export const saveAttendance = async (
   markedById: string
 ): Promise<boolean> => {
   try {
-    // First delete any existing records for this date and subject
     await supabase
       .from('attendance_records')
       .delete()
       .eq('date', date)
       .eq('subject_id', subjectId);
     
-    // Then insert the new records
     const records = studentStatuses.map(({ studentId, status }) => ({
       date,
       subject_id: subjectId,
@@ -341,7 +328,6 @@ export const getStudentAttendanceSummary = async (studentId: string): Promise<{
   bySubject: Record<string, { total: number, present: number }> 
 }> => {
   try {
-    // Get all attendance records for this student
     const { data, error } = await supabase
       .from('attendance_records')
       .select('subject_id, status')
@@ -354,12 +340,10 @@ export const getStudentAttendanceSummary = async (studentId: string): Promise<{
     const bySubject: Record<string, { total: number, present: number }> = {};
     
     data.forEach(record => {
-      // Initialize subject record if doesn't exist
       if (!bySubject[record.subject_id]) {
         bySubject[record.subject_id] = { total: 0, present: 0 };
       }
       
-      // Increment counters
       bySubject[record.subject_id].total++;
       totalClasses++;
       
@@ -379,5 +363,35 @@ export const getStudentAttendanceSummary = async (studentId: string): Promise<{
       overall: { total: 0, present: 0 },
       bySubject: {}
     };
+  }
+};
+
+// Calculate working days (days where attendance was marked)
+export const calculateWorkingDays = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('date', { count: 'exact', head: true })
+      .order('date')
+      .limit(1);
+    
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+      return 0;
+    }
+    
+    const { count, error: countError } = await supabase
+      .from('attendance_records')
+      .select('date', { count: 'exact', head: false })
+      .order('date')
+      .limit(1000);
+    
+    if (countError) throw countError;
+    
+    return count || 0;
+  } catch (error) {
+    console.error('Error calculating working days:', error);
+    return 0;
   }
 };

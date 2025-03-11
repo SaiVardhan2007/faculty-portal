@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -63,7 +62,7 @@ const Admin: React.FC = () => {
     queryKey: ['students'],
     queryFn: fetchStudents,
     refetchOnWindowFocus: true,
-    refetchInterval: 3000 // Auto-refresh every 3 seconds
+    refetchInterval: 1000 // Auto-refresh every 1 second for better real-time updates
   });
 
   // Fetch subjects with more frequent refetching
@@ -76,7 +75,7 @@ const Admin: React.FC = () => {
     queryKey: ['subjects'],
     queryFn: fetchSubjects,
     refetchOnWindowFocus: true,
-    refetchInterval: 3000 // Auto-refresh every 3 seconds
+    refetchInterval: 1000 // Auto-refresh every 1 second for better real-time updates
   });
   
   // Add student mutation
