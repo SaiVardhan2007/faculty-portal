@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Student, Subject, AttendanceRecord, DbStudent, DbSubject, DbAttendanceRecord, AttendanceStats } from "./types";
 import { toast } from "./toast";
@@ -262,12 +263,24 @@ export const saveAttendance = async (
   markedById: string
 ): Promise<boolean> => {
   try {
+    // First, check if there are any students marked as present
+    const presentStudents = studentStatuses.filter(student => student.status === 'present');
+    
+    // If no students are present, don't mark attendance for this day/subject
+    if (presentStudents.length === 0) {
+      console.log('No students present, not marking attendance for this class');
+      toast.info('No students present, class not recorded');
+      return true;
+    }
+    
+    // Delete existing records for this date and subject
     await supabase
       .from('attendance_records')
       .delete()
       .eq('date', date)
       .eq('subject_id', subjectId);
     
+    // Create new records
     const records = studentStatuses.map(({ studentId, status }) => ({
       date,
       subject_id: subjectId,
@@ -328,29 +341,98 @@ export const getStudentAttendanceSummary = async (studentId: string): Promise<{
   bySubject: Record<string, { total: number, present: number }> 
 }> => {
   try {
-    const { data, error } = await supabase
+    // Get all subjects to ensure we count subject days properly
+    const { data: subjectsData, error: subjectsError } = await supabase
+      .from('subjects')
+      .select('id');
+    
+    if (subjectsError) throw subjectsError;
+    
+    // Get all dates where attendance was marked for any student for any subject
+    const { data: allDatesData, error: allDatesError } = await supabase
+      .rpc('get_class_days');
+    
+    if (allDatesError) throw allDatesError;
+    
+    // If we don't have a specific function, we can query distinct dates
+    const allDates = allDatesData || [];
+    
+    // Get attendance records for this student
+    const { data: studentAttendance, error: attendanceError } = await supabase
       .from('attendance_records')
-      .select('subject_id, status')
+      .select('subject_id, date, status')
       .eq('student_id', studentId);
     
-    if (error) throw error;
+    if (attendanceError) throw attendanceError;
     
+    // For each subject, create a map of dates to attendance status
+    const subjectDatesMap: Record<string, Record<string, string>> = {};
+    const subjectIds = subjectsData.map(s => s.id);
+    
+    // Initialize the subject dates map
+    subjectIds.forEach(subjectId => {
+      subjectDatesMap[subjectId] = {};
+    });
+    
+    // Fill in the attendance records we have
+    studentAttendance.forEach(record => {
+      if (!subjectDatesMap[record.subject_id]) {
+        subjectDatesMap[record.subject_id] = {};
+      }
+      subjectDatesMap[record.subject_id][record.date] = record.status;
+    });
+    
+    // For each subject, get the list of dates where any attendance was marked
+    const subjectClassDates: Record<string, string[]> = {};
+    
+    // Get all dates where attendance was marked for each subject
+    const { data: classDatesData, error: classDatesError } = await supabase
+      .from('attendance_records')
+      .select('subject_id, date')
+      .order('date')
+      .distinctOn('subject_id, date');
+    
+    if (classDatesError) throw classDatesError;
+    
+    // Group class dates by subject
+    classDatesData.forEach(record => {
+      if (!subjectClassDates[record.subject_id]) {
+        subjectClassDates[record.subject_id] = [];
+      }
+      if (!subjectClassDates[record.subject_id].includes(record.date)) {
+        subjectClassDates[record.subject_id].push(record.date);
+      }
+    });
+    
+    // Calculate attendance summary by subject
+    const bySubject: Record<string, { total: number, present: number }> = {};
     let totalClasses = 0;
     let totalPresent = 0;
-    const bySubject: Record<string, { total: number, present: number }> = {};
     
-    data.forEach(record => {
-      if (!bySubject[record.subject_id]) {
-        bySubject[record.subject_id] = { total: 0, present: 0 };
-      }
+    // For each subject
+    subjectIds.forEach(subjectId => {
+      const classDates = subjectClassDates[subjectId] || [];
+      const subjectAttendance = subjectDatesMap[subjectId] || {};
       
-      bySubject[record.subject_id].total++;
-      totalClasses++;
+      let presentCount = 0;
       
-      if (record.status === 'present') {
-        bySubject[record.subject_id].present++;
-        totalPresent++;
-      }
+      // For each class date for this subject
+      classDates.forEach(date => {
+        // If student was present on this date for this subject
+        if (subjectAttendance[date] === 'present') {
+          presentCount++;
+        }
+        // If no record exists for this student on this date, count as absent
+        // (already handled since we're only counting present if there's a 'present' record)
+      });
+      
+      bySubject[subjectId] = {
+        total: classDates.length,
+        present: presentCount
+      };
+      
+      totalClasses += classDates.length;
+      totalPresent += presentCount;
     });
     
     return {
@@ -371,25 +453,13 @@ export const calculateWorkingDays = async (): Promise<number> => {
   try {
     const { data, error } = await supabase
       .from('attendance_records')
-      .select('date', { count: 'exact', head: true })
+      .select('date')
       .order('date')
-      .limit(1);
+      .distinctOn('date');
     
     if (error) throw error;
     
-    if (!data || data.length === 0) {
-      return 0;
-    }
-    
-    const { count, error: countError } = await supabase
-      .from('attendance_records')
-      .select('date', { count: 'exact', head: false })
-      .order('date')
-      .limit(1000);
-    
-    if (countError) throw countError;
-    
-    return count || 0;
+    return data.length;
   } catch (error) {
     console.error('Error calculating working days:', error);
     return 0;

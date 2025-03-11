@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { CalendarIcon, Loader2, Save, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, AlertCircle, Info } from 'lucide-react';
 import { toast } from '../lib/toast';
 import { cn } from '../lib/utils';
 import { 
@@ -34,6 +34,7 @@ const MarkAttendance: React.FC = () => {
   const [attendanceData, setAttendanceData] = useState<Record<string, 'present' | 'absent'>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState({ totalStudents: 0, presentStudents: 0, absentStudents: 0 });
+  const [isReadOnly, setIsReadOnly] = useState(false);
   
   // Get all students
   const { 
@@ -50,7 +51,7 @@ const MarkAttendance: React.FC = () => {
     isLoading: isLoadingSubjects 
   } = useQuery({
     queryKey: ['subjects'],
-    queryFn: fetchSubjects
+    queryFn: fetchSubjects,
   });
 
   // Get existing attendance records for selected date and subject
@@ -80,7 +81,7 @@ const MarkAttendance: React.FC = () => {
       attendanceData: Record<string, 'present' | 'absent'>;
       userId: string;
     }) => {
-      // For all students, initialize with 'absent' status if not marked
+      // Convert the attendanceData object to an array of student statuses
       const studentStatuses = students.map(student => ({
         studentId: student.id,
         status: attendanceData[student.id] || 'absent'
@@ -89,8 +90,15 @@ const MarkAttendance: React.FC = () => {
       return saveAttendance(date, subjectId, studentStatuses, userId);
     },
     onSuccess: () => {
+      // Invalidate all potentially affected queries
       queryClient.invalidateQueries({ 
-        queryKey: ['attendance', date ? format(date, 'yyyy-MM-dd') : '', subjectId] 
+        queryKey: ['attendance'] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['studentAttendance'] 
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['workingDays']
       });
       toast.success('Attendance saved successfully');
     }
@@ -129,6 +137,23 @@ const MarkAttendance: React.FC = () => {
       setStats({ totalStudents: 0, presentStudents: 0, absentStudents: 0 });
     }
   }, [subjectId, students, existingAttendance, isLoadingAttendance]);
+  
+  // Check if the selected date is today or in the past (to determine if readOnly mode)
+  useEffect(() => {
+    if (date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const selectedDate = new Date(date);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      const isPastDate = selectedDate < today;
+      const isFutureDate = selectedDate > today;
+      
+      // Set read-only mode if the date is in the past
+      setIsReadOnly(isPastDate || isFutureDate);
+    }
+  }, [date]);
 
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     const newAttendanceData = {
@@ -155,15 +180,23 @@ const MarkAttendance: React.FC = () => {
     
     // Check if selected date is today
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const selectedDate = new Date(date);
-    const isToday = 
-      today.getDate() === selectedDate.getDate() &&
-      today.getMonth() === selectedDate.getMonth() &&
-      today.getFullYear() === selectedDate.getFullYear();
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    const isToday = selectedDate.getTime() === today.getTime();
       
     if (!isToday) {
       toast.error('You can only mark attendance for today');
       return;
+    }
+    
+    // Check if any student is marked as present
+    const anyPresent = Object.values(attendanceData).some(status => status === 'present');
+    
+    if (!anyPresent) {
+      toast.warning('No students are marked present. This class will not be counted.');
     }
     
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -180,9 +213,6 @@ const MarkAttendance: React.FC = () => {
       
       // Refetch attendance after saving
       refetchAttendance();
-      
-      // Invalidate queries that might depend on attendance data
-      queryClient.invalidateQueries({ queryKey: ['studentAttendance'] });
     } catch (error) {
       console.error('Failed to save attendance:', error);
     } finally {
@@ -199,12 +229,12 @@ const MarkAttendance: React.FC = () => {
   const canMarkAttendance = date ? (
     (() => {
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const selectedDate = new Date(date);
-      return (
-        today.getDate() === selectedDate.getDate() &&
-        today.getMonth() === selectedDate.getMonth() &&
-        today.getFullYear() === selectedDate.getFullYear()
-      );
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      return today.getTime() === selectedDate.getTime();
     })()
   ) : false;
   
@@ -287,11 +317,15 @@ const MarkAttendance: React.FC = () => {
           
           {subjectId && date && (
             <div className="space-y-6 animate-slide-up">
-              {!canMarkAttendance && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
+              {isReadOnly && (
+                <Alert className="mb-4">
+                  <Info className="h-4 w-4" />
                   <AlertDescription>
-                    You can only mark attendance for today. For past or future dates, you can only view the attendance.
+                    {canMarkAttendance ? (
+                      "You are viewing today's attendance. You can make changes and save."
+                    ) : (
+                      "You are viewing attendance records in read-only mode. To mark attendance, select today's date."
+                    )}
                   </AlertDescription>
                 </Alert>
               )}

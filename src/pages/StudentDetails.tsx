@@ -72,7 +72,7 @@ const StudentDetails: React.FC = () => {
         subjectCode: subject.code,
         summary
       };
-    });
+    }).filter(subject => subject.summary.totalClasses > 0); // Only show subjects that have classes
   };
   
   const overallAttendance: AttendanceSummary = attendanceData 

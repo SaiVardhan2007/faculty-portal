@@ -27,8 +27,17 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
 
   // Update attendance when initialAttendance changes
   useEffect(() => {
-    setAttendance(initialAttendance || {});
-  }, [initialAttendance]);
+    const updatedAttendance = { ...initialAttendance };
+    
+    // Set default status as absent for any student without a status
+    students.forEach(student => {
+      if (!updatedAttendance[student.id]) {
+        updatedAttendance[student.id] = 'absent';
+      }
+    });
+    
+    setAttendance(updatedAttendance);
+  }, [initialAttendance, students]);
 
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     if (readOnly) return;
@@ -53,7 +62,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
         </TableHeader>
         <TableBody>
           {students.map((student) => {
-            const status = attendance[student.id];
+            const status = attendance[student.id] || 'absent';
             return (
               <TableRow key={student.id} className="h-16">
                 <TableCell className="font-medium">{student.roll_number}</TableCell>
