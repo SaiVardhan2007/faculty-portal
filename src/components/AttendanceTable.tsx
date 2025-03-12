@@ -43,11 +43,12 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
           table: 'attendance_records',
           filter: `date=eq.${date}&subject_id=eq.${subjectId}`
         },
-        (payload) => {
+        (payload: any) => {
           if (payload.new) {
+            const { student_id, status } = payload.new;
             setAttendance(current => ({
               ...current,
-              [payload.new.student_id]: payload.new.status as 'present' | 'absent'
+              [student_id]: status as 'present' | 'absent'
             }));
           }
         }
