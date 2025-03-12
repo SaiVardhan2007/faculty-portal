@@ -45,11 +45,11 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
           event: '*',
           schema: 'public',
           table: 'attendance_records',
-          filter: `date=eq.${date}&subject_id=eq.${subjectId}`
+          filter: `subject_id=eq.${subjectId}`
         },
         (payload: any) => {
           console.log('Received real-time update:', payload);
-          if (payload.new) {
+          if (payload.new && payload.new.date === date) {
             const { student_id, status } = payload.new;
             console.log(`Updating attendance for student ${student_id} to ${status}`);
             setAttendance(current => ({

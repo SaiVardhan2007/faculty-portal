@@ -307,15 +307,14 @@ export const saveAttendance = async (
     
     const { data, error } = await supabase
       .from('attendance_records')
-      .insert(records)
-      .select();
+      .insert(records);
     
     if (error) {
       console.error('Error inserting attendance records:', error);
       throw error;
     }
     
-    console.log(`Successfully saved ${data.length} attendance records`);
+    console.log(`Successfully saved attendance records`);
     toast.success(`Attendance saved for ${presentStudents.length} present students`);
     return true;
   } catch (error: any) {
