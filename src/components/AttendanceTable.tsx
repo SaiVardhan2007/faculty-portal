@@ -4,6 +4,7 @@ import { Student } from '../lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { cn } from '../lib/utils';
 import { CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AttendanceTableProps {
   students: Student[];
@@ -26,19 +27,37 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     initialAttendance || {}
   );
 
-  // Update attendance when initialAttendance changes
   useEffect(() => {
-    const updatedAttendance = { ...initialAttendance };
-    
-    // Set default status as absent for any student without a status
-    students.forEach(student => {
-      if (!updatedAttendance[student.id]) {
-        updatedAttendance[student.id] = 'absent';
-      }
-    });
-    
-    setAttendance(updatedAttendance);
-  }, [initialAttendance, students]);
+    setAttendance(initialAttendance || {});
+  }, [initialAttendance]);
+
+  useEffect(() => {
+    // Subscribe to real-time updates for attendance changes
+    const channel = supabase
+      .channel('attendance-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance_records',
+          filter: `date=eq.${date}&subject_id=eq.${subjectId}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setAttendance(current => ({
+              ...current,
+              [payload.new.student_id]: payload.new.status as 'present' | 'absent'
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [date, subjectId]);
 
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     if (readOnly) return;
@@ -70,47 +89,49 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
               <TableRow 
                 key={student.id} 
                 className={cn(
-                  'h-16',
+                  'h-14',
                   isPresent ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-red-50/50 dark:bg-red-950/20'
                 )}
               >
                 <TableCell className="font-medium">{student.roll_number}</TableCell>
                 <TableCell>
-                  <span className="font-medium">{student.name}</span>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {student.course} • Year {student.year} • Section {student.section}
-                  </p>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{student.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {student.course} • Year {student.year} • Section {student.section}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => handleAttendanceChange(student.id, 'present')}
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium flex items-center gap-2",
+                        "px-3 py-1.5 rounded-full transition-all duration-300 text-sm font-medium flex items-center gap-1.5",
                         status === 'present'
-                          ? "bg-emerald-500 text-white shadow-md"
+                          ? "bg-emerald-500 text-white shadow-sm"
                           : "bg-transparent border border-emerald-500 text-emerald-700 hover:bg-emerald-50",
                         readOnly && "pointer-events-none opacity-70"
                       )}
                       disabled={readOnly}
                       aria-label="Mark as present"
                     >
-                      <CheckCircle className="h-4 w-4" />
+                      <CheckCircle className="h-3.5 w-3.5" />
                       Present
                     </button>
                     <button
                       onClick={() => handleAttendanceChange(student.id, 'absent')}
                       className={cn(
-                        "px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium flex items-center gap-2",
+                        "px-3 py-1.5 rounded-full transition-all duration-300 text-sm font-medium flex items-center gap-1.5",
                         status === 'absent'
-                          ? "bg-red-500 text-white shadow-md"
+                          ? "bg-red-500 text-white shadow-sm"
                           : "bg-transparent border border-red-500 text-red-700 hover:bg-red-50",
                         readOnly && "pointer-events-none opacity-70"
                       )}
                       disabled={readOnly}
                       aria-label="Mark as absent"
                     >
-                      <XCircle className="h-4 w-4" />
+                      <XCircle className="h-3.5 w-3.5" />
                       Absent
                     </button>
                   </div>
