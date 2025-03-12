@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -11,6 +10,8 @@ import { fetchStudents, fetchSubjects, getStudentAttendanceSummary } from '../li
 import { AttendanceSummary } from '../lib/types';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
 const StudentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +43,37 @@ const StudentDetails: React.FC = () => {
   } = useQuery({
     queryKey: ['studentAttendance', id],
     queryFn: () => getStudentAttendanceSummary(id || ''),
+    enabled: !!id,
+  });
+  
+  // Add this new query to get the latest attendance records for this student
+  const { 
+    data: latestAttendance = [],
+    isLoading: isLoadingLatestAttendance 
+  } = useQuery({
+    queryKey: ['studentLatestAttendance', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      // Get the latest 5 attendance records for this student
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select(`
+          date,
+          status,
+          subjects(name, code)
+        `)
+        .eq('student_id', id)
+        .order('date', { ascending: false })
+        .limit(5);
+      
+      if (error) {
+        console.error('Error fetching latest attendance:', error);
+        throw error;
+      }
+      
+      return data || [];
+    },
     enabled: !!id,
   });
   
@@ -89,7 +121,7 @@ const StudentDetails: React.FC = () => {
   
   const subjectAttendance = calculateSubjectAttendance();
   
-  if (isLoadingStudents || isLoadingSubjects || isLoadingAttendance) {
+  if (isLoadingStudents || isLoadingSubjects || isLoadingAttendance || isLoadingLatestAttendance) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
@@ -126,6 +158,7 @@ const StudentDetails: React.FC = () => {
           </Button>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Student Profile Card */}
             <Card className="lg:col-span-1 backdrop-blur-card glass-card dark:glass-card-dark">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
@@ -170,6 +203,7 @@ const StudentDetails: React.FC = () => {
               </CardContent>
             </Card>
             
+            {/* Overall Attendance Summary Card */}
             <Card className="lg:col-span-2 backdrop-blur-card glass-card dark:glass-card-dark">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -208,6 +242,69 @@ const StudentDetails: React.FC = () => {
               </CardContent>
             </Card>
             
+            {/* Latest Attendance Records Card - New Card */}
+            <Card className="lg:col-span-3 backdrop-blur-card glass-card dark:glass-card-dark">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  Recent Attendance History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {latestAttendance.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CalendarDays className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
+                    <p>No recent attendance records found for this student.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-md border border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {latestAttendance.map((record: any, index) => (
+                          <TableRow key={`${record.date}-${index}`}>
+                            <TableCell>
+                              {new Date(record.date).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-medium">
+                                  {record.subjects?.name || 'Unknown Subject'}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {record.subjects?.code || ''}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={record.status === 'present' ? 'default' : 'destructive'}
+                                className="capitalize"
+                              >
+                                {record.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Subject-wise Attendance Card */}
             <Card className="lg:col-span-3 backdrop-blur-card glass-card dark:glass-card-dark">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

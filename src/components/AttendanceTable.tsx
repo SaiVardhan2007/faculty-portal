@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { cn } from '../lib/utils';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '../lib/toast';
 
 interface AttendanceTableProps {
   students: Student[];
@@ -27,12 +28,15 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     initialAttendance || {}
   );
 
+  // Update local state when initialAttendance prop changes
   useEffect(() => {
     setAttendance(initialAttendance || {});
   }, [initialAttendance]);
 
+  // Subscribe to real-time updates for attendance changes
   useEffect(() => {
-    // Subscribe to real-time updates for attendance changes
+    console.log(`Subscribing to attendance updates for date: ${date}, subject: ${subjectId}`);
+    
     const channel = supabase
       .channel('attendance-changes')
       .on(
@@ -44,21 +48,30 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
           filter: `date=eq.${date}&subject_id=eq.${subjectId}`
         },
         (payload: any) => {
+          console.log('Received real-time update:', payload);
           if (payload.new) {
             const { student_id, status } = payload.new;
+            console.log(`Updating attendance for student ${student_id} to ${status}`);
             setAttendance(current => ({
               ...current,
               [student_id]: status as 'present' | 'absent'
             }));
+            
+            // Show a toast notification for the update
+            const studentName = students.find(s => s.id === student_id)?.name || 'Student';
+            toast.info(`${studentName}'s attendance updated to ${status}`);
           }
         }
       )
       .subscribe();
 
+    console.log('Subscription created:', channel);
+
     return () => {
+      console.log('Removing subscription');
       supabase.removeChannel(channel);
     };
-  }, [date, subjectId]);
+  }, [date, subjectId, students]);
 
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     if (readOnly) return;
@@ -67,6 +80,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
       ...attendance,
       [studentId]: status
     };
+    
     setAttendance(newAttendance);
     onAttendanceChange(studentId, status);
   };
@@ -90,7 +104,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
               <TableRow 
                 key={student.id} 
                 className={cn(
-                  'h-14',
+                  'h-14 transition-colors duration-200',
                   isPresent ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-red-50/50 dark:bg-red-950/20'
                 )}
               >
@@ -111,7 +125,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                         "px-3 py-1.5 rounded-full transition-all duration-300 text-sm font-medium flex items-center gap-1.5",
                         status === 'present'
                           ? "bg-emerald-500 text-white shadow-sm"
-                          : "bg-transparent border border-emerald-500 text-emerald-700 hover:bg-emerald-50",
+                          : "bg-transparent border border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20",
                         readOnly && "pointer-events-none opacity-70"
                       )}
                       disabled={readOnly}
@@ -126,7 +140,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                         "px-3 py-1.5 rounded-full transition-all duration-300 text-sm font-medium flex items-center gap-1.5",
                         status === 'absent'
                           ? "bg-red-500 text-white shadow-sm"
-                          : "bg-transparent border border-red-500 text-red-700 hover:bg-red-50",
+                          : "bg-transparent border border-red-500 text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20",
                         readOnly && "pointer-events-none opacity-70"
                       )}
                       disabled={readOnly}

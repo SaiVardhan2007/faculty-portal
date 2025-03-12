@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -36,7 +35,6 @@ const MarkAttendance: React.FC = () => {
   const [stats, setStats] = useState({ totalStudents: 0, presentStudents: 0, absentStudents: 0 });
   const [isReadOnly, setIsReadOnly] = useState(false);
   
-  // Get all students
   const { 
     data: students = [], 
     isLoading: isLoadingStudents 
@@ -45,7 +43,6 @@ const MarkAttendance: React.FC = () => {
     queryFn: fetchStudents
   });
   
-  // Get all subjects
   const { 
     data: subjects = [], 
     isLoading: isLoadingSubjects 
@@ -54,7 +51,6 @@ const MarkAttendance: React.FC = () => {
     queryFn: fetchSubjects,
   });
 
-  // Get existing attendance records for selected date and subject
   const { 
     data: existingAttendance = {},
     isLoading: isLoadingAttendance,
@@ -68,7 +64,6 @@ const MarkAttendance: React.FC = () => {
     enabled: !!date && !!subjectId,
   });
 
-  // Save attendance mutation
   const saveAttendanceMutation = useMutation({
     mutationFn: ({
       date,
@@ -81,7 +76,8 @@ const MarkAttendance: React.FC = () => {
       attendanceData: Record<string, 'present' | 'absent'>;
       userId: string;
     }) => {
-      // Convert the attendanceData object to an array of student statuses
+      console.log('Saving attendance with data:', { date, subjectId, attendanceData, userId });
+      
       const studentStatuses = students.map(student => ({
         studentId: student.id,
         status: attendanceData[student.id] || 'absent'
@@ -90,27 +86,31 @@ const MarkAttendance: React.FC = () => {
       return saveAttendance(date, subjectId, studentStatuses, userId);
     },
     onSuccess: () => {
-      // Invalidate all potentially affected queries
-      queryClient.invalidateQueries({ 
-        queryKey: ['attendance'] 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: ['studentAttendance'] 
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['workingDays']
-      });
-      toast.success('Attendance saved successfully');
+      setTimeout(() => {
+        console.log('Invalidating attendance queries');
+        queryClient.invalidateQueries({ 
+          queryKey: ['attendance'] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ['studentAttendance'] 
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['workingDays']
+        });
+      }, 500);
+    },
+    onError: (error: any) => {
+      console.error('Error in save attendance mutation:', error);
+      toast.error(`Failed to save attendance: ${error.message || 'Unknown error'}`);
     }
   });
-  
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
     
-  // Initialize default attendance to absent for all students when subject changes
   useEffect(() => {
     if (subjectId && students.length > 0) {
       const defaultAbsentAttendance: Record<string, 'present' | 'absent'> = {};
@@ -118,14 +118,12 @@ const MarkAttendance: React.FC = () => {
         defaultAbsentAttendance[student.id] = 'absent';
       });
       
-      // Merge with existing attendance data (if any)
       if (!isLoadingAttendance && Object.keys(existingAttendance).length > 0) {
         setAttendanceData({...defaultAbsentAttendance, ...existingAttendance});
       } else {
         setAttendanceData(defaultAbsentAttendance);
       }
       
-      // Update stats
       const presentCount = Object.values(existingAttendance).filter(status => status === 'present').length;
       setStats({
         totalStudents: students.length,
@@ -138,7 +136,6 @@ const MarkAttendance: React.FC = () => {
     }
   }, [subjectId, students, existingAttendance, isLoadingAttendance]);
   
-  // Check if the selected date is today or in the past (to determine if readOnly mode)
   useEffect(() => {
     if (date) {
       const today = new Date();
@@ -150,10 +147,20 @@ const MarkAttendance: React.FC = () => {
       const isPastDate = selectedDate < today;
       const isFutureDate = selectedDate > today;
       
-      // Set read-only mode if the date is in the past
       setIsReadOnly(isPastDate || isFutureDate);
     }
   }, [date]);
+
+  useEffect(() => {
+    if (students.length > 0 && Object.keys(attendanceData).length > 0) {
+      const presentCount = Object.values(attendanceData).filter(status => status === 'present').length;
+      setStats({
+        totalStudents: students.length,
+        presentStudents: presentCount,
+        absentStudents: students.length - presentCount
+      });
+    }
+  }, [attendanceData, students.length]);
 
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     const newAttendanceData = {
@@ -163,7 +170,6 @@ const MarkAttendance: React.FC = () => {
     
     setAttendanceData(newAttendanceData);
     
-    // Update stats immediately
     const presentCount = Object.values(newAttendanceData).filter(s => s === 'present').length;
     setStats({
       totalStudents: students.length,
@@ -178,7 +184,6 @@ const MarkAttendance: React.FC = () => {
       return;
     }
     
-    // Check if selected date is today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -192,7 +197,6 @@ const MarkAttendance: React.FC = () => {
       return;
     }
     
-    // Check if any student is marked as present
     const anyPresent = Object.values(attendanceData).some(status => status === 'present');
     
     if (!anyPresent) {
@@ -204,18 +208,26 @@ const MarkAttendance: React.FC = () => {
     setIsSaving(true);
     
     try {
-      await saveAttendanceMutation.mutateAsync({
+      console.log('Starting save attendance operation');
+      const result = await saveAttendanceMutation.mutateAsync({
         date: dateStr,
         subjectId,
         attendanceData,
         userId: user.id
       });
       
-      // Refetch attendance after saving
-      refetchAttendance();
-    } catch (error) {
+      console.log('Save attendance result:', result);
+      
+      await refetchAttendance();
+      
+      if (result) {
+        toast.success('Attendance saved successfully');
+      } else {
+        toast.error('Failed to save attendance');
+      }
+    } catch (error: any) {
       console.error('Failed to save attendance:', error);
-      toast.error('Failed to save attendance');
+      toast.error(`Failed to save attendance: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -223,7 +235,6 @@ const MarkAttendance: React.FC = () => {
   
   const handleSubjectChange = (value: string) => {
     setSubjectId(value);
-    // Reset attendance data when subject changes
     setAttendanceData({});
   };
   

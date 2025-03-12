@@ -234,13 +234,19 @@ export const deleteSubject = async (id: string): Promise<boolean> => {
 // Attendance API
 export const fetchAttendanceRecords = async (date: string, subjectId: string): Promise<Record<string, 'present' | 'absent'>> => {
   try {
+    console.log(`Fetching attendance records for date: ${date}, subject: ${subjectId}`);
     const { data, error } = await supabase
       .from('attendance_records')
       .select('*')
       .eq('date', date)
       .eq('subject_id', subjectId);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching attendance records:', error);
+      throw error;
+    }
+    
+    console.log(`Found ${data?.length || 0} attendance records`);
     
     const attendanceMap: Record<string, 'present' | 'absent'> = {};
     (data as DbAttendanceRecord[]).forEach(record => {
@@ -262,6 +268,9 @@ export const saveAttendance = async (
   markedById: string
 ): Promise<boolean> => {
   try {
+    console.log(`Saving attendance for date: ${date}, subject: ${subjectId}, with ${studentStatuses.length} student records`);
+    console.log('Student statuses:', studentStatuses);
+    
     // First, check if there are any students marked as present
     const presentStudents = studentStatuses.filter(student => student.status === 'present');
     
@@ -273,11 +282,18 @@ export const saveAttendance = async (
     }
     
     // Delete existing records for this date and subject
-    await supabase
+    const { error: deleteError } = await supabase
       .from('attendance_records')
       .delete()
       .eq('date', date)
       .eq('subject_id', subjectId);
+      
+    if (deleteError) {
+      console.error('Error deleting existing attendance records:', deleteError);
+      throw deleteError;
+    }
+    
+    console.log('Deleted existing attendance records');
     
     // Create new records
     const records = studentStatuses.map(({ studentId, status }) => ({
@@ -289,17 +305,22 @@ export const saveAttendance = async (
       marked_at: new Date().toISOString()
     }));
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('attendance_records')
-      .insert(records);
+      .insert(records)
+      .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error inserting attendance records:', error);
+      throw error;
+    }
     
-    toast.success('Attendance saved successfully');
+    console.log(`Successfully saved ${data.length} attendance records`);
+    toast.success(`Attendance saved for ${presentStudents.length} present students`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving attendance:', error);
-    toast.error('Failed to save attendance');
+    toast.error(`Failed to save attendance: ${error.message || 'Unknown error'}`);
     return false;
   }
 };
@@ -460,5 +481,32 @@ export const calculateWorkingDays = async (): Promise<number> => {
   } catch (error) {
     console.error('Error calculating working days:', error);
     return 0;
+  }
+};
+
+// Add a new function to get a student's attendance status for a specific date and subject
+export const getStudentAttendanceForDateAndSubject = async (
+  studentId: string,
+  date: string,
+  subjectId: string
+): Promise<'present' | 'absent' | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('status')
+      .eq('student_id', studentId)
+      .eq('date', date)
+      .eq('subject_id', subjectId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching student attendance:', error);
+      return null;
+    }
+    
+    return data ? (data.status as 'present' | 'absent') : null;
+  } catch (error) {
+    console.error('Error fetching student attendance:', error);
+    return null;
   }
 };
