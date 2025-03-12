@@ -4,7 +4,7 @@ import { Student } from '../lib/types';
 import { Card, CardContent } from './ui/card';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { GraduationCap, Users } from 'lucide-react';
+import { BookOpen, GraduationCap, Users } from 'lucide-react';
 import { Badge } from './ui/badge';
 
 interface StudentCardProps {
@@ -24,37 +24,45 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, className, style }) 
     <Card 
       onClick={handleClick}
       className={cn(
-        'overflow-hidden backdrop-blur-card glass-card hover:scale-105 cursor-pointer transition-all duration-300',
-        'border border-gray-200 dark:glass-card-dark dark:border-gray-800 h-full shadow-sm hover:shadow-md',
+        'overflow-hidden backdrop-blur-card glass-card transform transition-all duration-300',
+        'hover:scale-105 cursor-pointer border border-gray-200/50',
+        'dark:glass-card-dark dark:border-gray-800/50 h-full shadow-lg hover:shadow-xl',
         className
       )}
       style={style}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-6">
         <div className="flex flex-col items-center text-center space-y-4">
-          {/* Avatar/Icon */}
-          <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-            <GraduationCap className="h-8 w-8" />
+          {/* Avatar/Icon with gradient background */}
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+            <GraduationCap className="h-10 w-10 text-primary" />
           </div>
           
-          {/* Roll Number */}
-          <Badge variant="outline" className="bg-primary/5 text-primary px-3 py-1 text-xs">
+          {/* Roll Number Badge */}
+          <Badge variant="outline" className="bg-primary/5 text-primary font-medium px-4 py-1">
             {student.roll_number}
           </Badge>
           
           {/* Name */}
-          <h3 className="text-lg font-semibold">{student.name}</h3>
+          <h3 className="text-xl font-semibold tracking-tight">{student.name}</h3>
           
-          {/* Course Info */}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Users className="h-3 w-3" />
-            <span>{student.course} • Year {student.year} • Section {student.section}</span>
+          {/* Course Info with Icons */}
+          <div className="space-y-2 w-full">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <BookOpen className="h-4 w-4 text-primary" />
+              <span>{student.course}</span>
+            </div>
+            
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4 text-primary" />
+              <span>Year {student.year} • Section {student.section}</span>
+            </div>
           </div>
           
           {/* View Profile Button */}
-          <div className="mt-2 w-full">
-            <div className="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors">
-              View Profile
+          <div className="pt-2 w-full">
+            <div className="text-sm px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/20 text-primary rounded-full hover:from-primary/20 hover:to-primary/30 transition-all font-medium">
+              View Full Profile
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Student, Subject, AttendanceRecord, DbStudent, DbSubject, DbAttendanceRecord, AttendanceStats } from "./types";
 import { toast } from "./toast";
@@ -349,17 +348,14 @@ export const getStudentAttendanceSummary = async (studentId: string): Promise<{
     if (subjectsError) throw subjectsError;
     
     // Get all dates where attendance was marked
-    const { data: allDatesData, error: allDatesError } = await supabase
+    const { data: allDatesData } = await supabase
       .from('attendance_records')
-      .select('date')
-      .order('date')
-      .then(res => {
-        // Get unique dates
-        const uniqueDates = [...new Set(res.data?.map(record => record.date))];
-        return { data: uniqueDates.map(date => ({ date })) };
-      });
+      .select('date, status')
+      .eq('status', 'present') // Only count days where at least one student was present
+      .order('date');
     
-    if (allDatesError) throw allDatesError;
+    // Get unique dates where at least one student was present
+    const uniqueDates = [...new Set(allDatesData?.map(record => record.date))];
     
     // Get attendance records for this student
     const { data: studentAttendance, error: attendanceError } = await supabase
@@ -386,33 +382,30 @@ export const getStudentAttendanceSummary = async (studentId: string): Promise<{
       subjectDatesMap[record.subject_id][record.date] = record.status;
     });
     
-    // Get all dates where attendance was marked for each subject
-    const { data: classDatesData, error: classDatesError } = await supabase
-      .from('attendance_records')
-      .select('subject_id, date, status')
-      .order('date');
-    
-    if (classDatesError) throw classDatesError;
-    
-    // Group class dates by subject
-    const subjectClassDates: Record<string, string[]> = {};
-    
-    // Only include dates where at least one student was present
-    classDatesData.forEach(record => {
-      if (record.status === 'present') {
-        if (!subjectClassDates[record.subject_id]) {
-          subjectClassDates[record.subject_id] = [];
-        }
-        if (!subjectClassDates[record.subject_id].includes(record.date)) {
-          subjectClassDates[record.subject_id].push(record.date);
-        }
-      }
-    });
-    
     // Calculate attendance summary by subject
     const bySubject: Record<string, { total: number, present: number }> = {};
     let totalClasses = 0;
     let totalPresent = 0;
+    
+    // Get all class dates where at least one student was present
+    const { data: classDatesData, error: classDatesError } = await supabase
+      .from('attendance_records')
+      .select('subject_id, date, status')
+      .eq('status', 'present')
+      .order('date');
+    
+    if (classDatesError) throw classDatesError;
+    
+    // Group class dates by subject (only count days where at least one student was present)
+    const subjectClassDates: Record<string, string[]> = {};
+    classDatesData.forEach(record => {
+      if (!subjectClassDates[record.subject_id]) {
+        subjectClassDates[record.subject_id] = [];
+      }
+      if (!subjectClassDates[record.subject_id].includes(record.date)) {
+        subjectClassDates[record.subject_id].push(record.date);
+      }
+    });
     
     // For each subject
     subjectIds.forEach(subjectId => {
@@ -420,16 +413,12 @@ export const getStudentAttendanceSummary = async (studentId: string): Promise<{
       const subjectAttendance = subjectDatesMap[subjectId] || {};
       
       let presentCount = 0;
-      let absentCount = 0;
       
       // For each class date for this subject
       classDates.forEach(date => {
         // If student was present on this date for this subject
         if (subjectAttendance[date] === 'present') {
           presentCount++;
-        } else {
-          // If the student has no record or is marked absent, count as absent
-          absentCount++;
         }
       });
       
