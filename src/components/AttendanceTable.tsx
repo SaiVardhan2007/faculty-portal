@@ -28,7 +28,8 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     initialAttendance || {}
   );
   const [lastUpdatedStudent, setLastUpdatedStudent] = useState<string | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'connecting' | 'connected' | 'error' | 'reconnecting'>('connecting');
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   // Update local state when initialAttendance prop changes
   useEffect(() => {
@@ -48,62 +49,94 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
 
   // Subscribe to real-time updates for attendance changes
   useEffect(() => {
-    console.log(`Subscribing to attendance updates for date: ${date}, subject: ${subjectId}`);
-    
-    const channel = supabase
-      .channel('attendance-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'attendance_records',
-          filter: `subject_id=eq.${subjectId}`
-        },
-        (payload: any) => {
-          console.log('Received real-time update:', payload);
-          try {
-            if (payload.new && payload.new.date === date) {
-              const { student_id, status } = payload.new;
-              console.log(`Updating attendance for student ${student_id} to ${status}`);
-              
-              setAttendance(current => ({
-                ...current,
-                [student_id]: status as 'present' | 'absent'
-              }));
-              
-              setLastUpdatedStudent(student_id);
-              
-              // Show a toast notification for the update
-              const studentName = students.find(s => s.id === student_id)?.name || 'Student';
-              toast.info(`${studentName}'s attendance updated to ${status}`);
-            }
-          } catch (error) {
-            console.error('Error processing real-time update:', error);
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to attendance changes');
-          setSubscriptionStatus('connected');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to attendance changes');
-          setSubscriptionStatus('error');
-          toast.error('Failed to subscribe to real-time updates');
-        } else {
-          setSubscriptionStatus('connecting');
-        }
-      });
+    if (!date || !subjectId) {
+      console.log('Missing date or subjectId for subscription, skipping setup');
+      return;
+    }
 
-    console.log('Subscription created:', channel);
+    console.log(`Setting up subscription for attendance updates - date: ${date}, subject: ${subjectId}`);
+    
+    let retryTimeout: NodeJS.Timeout;
+    const maxRetries = 5;
+    
+    const setupSubscription = () => {
+      console.log(`Attempt ${reconnectAttempts + 1}/${maxRetries + 1} to subscribe to attendance changes`);
+      setSubscriptionStatus('connecting');
+      
+      const channel = supabase
+        .channel(`attendance-changes-${date}-${subjectId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'attendance_records',
+            filter: `subject_id=eq.${subjectId}`
+          },
+          (payload: any) => {
+            console.log('Received real-time update:', payload);
+            try {
+              if (payload.new && payload.new.date === date) {
+                const { student_id, status } = payload.new;
+                console.log(`Updating attendance for student ${student_id} to ${status}`);
+                
+                setAttendance(current => ({
+                  ...current,
+                  [student_id]: status as 'present' | 'absent'
+                }));
+                
+                setLastUpdatedStudent(student_id);
+                
+                // Show a toast notification for the update
+                const studentName = students.find(s => s.id === student_id)?.name || 'Student';
+                toast.info(`${studentName}'s attendance updated to ${status}`);
+              }
+            } catch (error) {
+              console.error('Error processing real-time update:', error);
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to attendance changes');
+            setSubscriptionStatus('connected');
+            setReconnectAttempts(0); // Reset retry counter on success
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Error subscribing to attendance changes');
+            setSubscriptionStatus('error');
+            
+            // Attempt to reconnect if we haven't exceeded max retries
+            if (reconnectAttempts < maxRetries) {
+              console.log(`Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxRetries}`);
+              setSubscriptionStatus('reconnecting');
+              
+              retryTimeout = setTimeout(() => {
+                setReconnectAttempts(prev => prev + 1);
+                supabase.removeChannel(channel);
+                setupSubscription();
+              }, 2000 * Math.pow(2, reconnectAttempts)); // Exponential backoff
+            } else {
+              toast.error('Failed to establish real-time connection after multiple attempts');
+            }
+          } else {
+            setSubscriptionStatus('connecting');
+          }
+        });
+
+      console.log('Subscription created:', channel);
+      
+      return channel;
+    };
+    
+    const channel = setupSubscription();
 
     return () => {
-      console.log('Removing subscription');
+      console.log('Cleaning up subscription');
+      clearTimeout(retryTimeout);
       supabase.removeChannel(channel);
     };
-  }, [date, subjectId, students]);
+  }, [date, subjectId, students, reconnectAttempts]);
 
   const handleAttendanceChange = (studentId: string, status: 'present' | 'absent') => {
     if (readOnly) return;
@@ -118,11 +151,40 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     onAttendanceChange(studentId, status);
   };
 
+  const getSubscriptionStatusMessage = () => {
+    switch (subscriptionStatus) {
+      case 'connecting':
+        return 'Connecting to real-time updates...';
+      case 'connected':
+        return 'Real-time updates active';
+      case 'reconnecting':
+        return `Reconnecting to real-time updates (Attempt ${reconnectAttempts})...`;
+      case 'error':
+        return 'Warning: Real-time updates are not working. Attendance changes may not appear immediately.';
+      default:
+        return '';
+    }
+  };
+
+  const getSubscriptionStatusClass = () => {
+    switch (subscriptionStatus) {
+      case 'connecting':
+      case 'reconnecting':
+        return 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200';
+      case 'connected':
+        return 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200';
+      case 'error':
+        return 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div className="overflow-hidden rounded-md border border-border shadow-sm">
-      {subscriptionStatus === 'error' && (
-        <div className="bg-red-50 dark:bg-red-900/20 px-4 py-2 text-sm text-red-800 dark:text-red-200">
-          Warning: Real-time updates are not working. Attendance changes may not appear immediately.
+      {subscriptionStatus !== 'connected' && (
+        <div className={cn("px-4 py-2 text-sm", getSubscriptionStatusClass())}>
+          {getSubscriptionStatusMessage()}
         </div>
       )}
       <Table>

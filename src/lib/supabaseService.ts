@@ -275,7 +275,7 @@ export const saveAttendance = async (
 ): Promise<boolean> => {
   try {
     if (!date || !subjectId || !markedById) {
-      console.error('Missing required parameters for saving attendance');
+      console.error('Missing required parameters for saving attendance', { date, subjectId, markedById });
       toast.error('Missing required information for saving attendance');
       return false;
     }
@@ -286,11 +286,10 @@ export const saveAttendance = async (
     // First, check if there are any students marked as present
     const presentStudents = studentStatuses.filter(student => student.status === 'present');
     
-    // If no students are present, don't mark attendance for this day/subject
+    // If no students are present, warn but proceed - we'll still save the empty/absent records
     if (presentStudents.length === 0) {
-      console.log('No students present, not marking attendance for this class');
-      toast.info('No students present, class not recorded');
-      return true;
+      console.log('No students present, proceeding to mark all as absent');
+      toast.warning('No students present for this class');
     }
     
     // Delete existing records for this date and subject
@@ -307,6 +306,12 @@ export const saveAttendance = async (
     
     console.log('Deleted existing attendance records');
     
+    // Create new records - but only if we have students to process
+    if (studentStatuses.length === 0) {
+      console.log('No student records to save');
+      return true;
+    }
+    
     // Create new records
     const records = studentStatuses.map(({ studentId, status }) => ({
       date,
@@ -317,7 +322,7 @@ export const saveAttendance = async (
       marked_at: new Date().toISOString()
     }));
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('attendance_records')
       .insert(records);
     
@@ -327,7 +332,7 @@ export const saveAttendance = async (
     }
     
     console.log(`Successfully saved ${records.length} attendance records`);
-    toast.success(`Attendance saved for ${presentStudents.length} present students`);
+    toast.success(`Attendance saved for ${studentStatuses.length} students (${presentStudents.length} present)`);
     return true;
   } catch (error: any) {
     console.error('Error saving attendance:', error);

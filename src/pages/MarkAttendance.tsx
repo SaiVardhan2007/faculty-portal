@@ -180,7 +180,7 @@ const MarkAttendance: React.FC = () => {
   
   const handleSave = async () => {
     if (!date || !subjectId || !user) {
-      toast.error('Please select date and subject');
+      toast.error('Please select both date and subject');
       return;
     }
     
@@ -197,6 +197,11 @@ const MarkAttendance: React.FC = () => {
       return;
     }
     
+    if (Object.keys(attendanceData).length === 0) {
+      toast.error('No attendance data to save');
+      return;
+    }
+    
     const anyPresent = Object.values(attendanceData).some(status => status === 'present');
     
     if (!anyPresent) {
@@ -209,6 +214,16 @@ const MarkAttendance: React.FC = () => {
     
     try {
       console.log('Starting save attendance operation');
+      console.log('Attendance data:', attendanceData);
+      console.log('Date:', dateStr);
+      console.log('Subject ID:', subjectId);
+      console.log('User ID:', user.id);
+      
+      const studentStatuses = students.map(student => ({
+        studentId: student.id,
+        status: attendanceData[student.id] || 'absent'
+      }));
+      
       const result = await saveAttendanceMutation.mutateAsync({
         date: dateStr,
         subjectId,
