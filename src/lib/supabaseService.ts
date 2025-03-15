@@ -235,6 +235,12 @@ export const deleteSubject = async (id: string): Promise<boolean> => {
 export const fetchAttendanceRecords = async (date: string, subjectId: string): Promise<Record<string, 'present' | 'absent'>> => {
   try {
     console.log(`Fetching attendance records for date: ${date}, subject: ${subjectId}`);
+    
+    if (!date || !subjectId) {
+      console.warn('Missing required parameters: date or subjectId');
+      return {};
+    }
+    
     const { data, error } = await supabase
       .from('attendance_records')
       .select('*')
@@ -246,11 +252,11 @@ export const fetchAttendanceRecords = async (date: string, subjectId: string): P
       throw error;
     }
     
-    console.log(`Found ${data?.length || 0} attendance records`);
+    console.log(`Found ${data?.length || 0} attendance records for date: ${date}, subject: ${subjectId}`);
     
     const attendanceMap: Record<string, 'present' | 'absent'> = {};
     (data as DbAttendanceRecord[]).forEach(record => {
-      attendanceMap[record.student_id] = record.status;
+      attendanceMap[record.student_id] = record.status as 'present' | 'absent';
     });
     
     return attendanceMap;
@@ -268,6 +274,12 @@ export const saveAttendance = async (
   markedById: string
 ): Promise<boolean> => {
   try {
+    if (!date || !subjectId || !markedById) {
+      console.error('Missing required parameters for saving attendance');
+      toast.error('Missing required information for saving attendance');
+      return false;
+    }
+    
     console.log(`Saving attendance for date: ${date}, subject: ${subjectId}, with ${studentStatuses.length} student records`);
     console.log('Student statuses:', studentStatuses);
     
@@ -290,7 +302,7 @@ export const saveAttendance = async (
       
     if (deleteError) {
       console.error('Error deleting existing attendance records:', deleteError);
-      throw deleteError;
+      throw new Error(`Failed to delete existing records: ${deleteError.message}`);
     }
     
     console.log('Deleted existing attendance records');
@@ -311,10 +323,10 @@ export const saveAttendance = async (
     
     if (error) {
       console.error('Error inserting attendance records:', error);
-      throw error;
+      throw new Error(`Failed to insert new records: ${error.message}`);
     }
     
-    console.log(`Successfully saved attendance records`);
+    console.log(`Successfully saved ${records.length} attendance records`);
     toast.success(`Attendance saved for ${presentStudents.length} present students`);
     return true;
   } catch (error: any) {
@@ -490,6 +502,11 @@ export const getStudentAttendanceForDateAndSubject = async (
   subjectId: string
 ): Promise<'present' | 'absent' | null> => {
   try {
+    if (!studentId || !date || !subjectId) {
+      console.warn('Missing required parameters for getStudentAttendanceForDateAndSubject');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('attendance_records')
       .select('status')

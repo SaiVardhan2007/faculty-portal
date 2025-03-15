@@ -28,6 +28,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
     initialAttendance || {}
   );
   const [lastUpdatedStudent, setLastUpdatedStudent] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
 
   // Update local state when initialAttendance prop changes
   useEffect(() => {
@@ -61,20 +62,24 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
         },
         (payload: any) => {
           console.log('Received real-time update:', payload);
-          if (payload.new && payload.new.date === date) {
-            const { student_id, status } = payload.new;
-            console.log(`Updating attendance for student ${student_id} to ${status}`);
-            
-            setAttendance(current => ({
-              ...current,
-              [student_id]: status as 'present' | 'absent'
-            }));
-            
-            setLastUpdatedStudent(student_id);
-            
-            // Show a toast notification for the update
-            const studentName = students.find(s => s.id === student_id)?.name || 'Student';
-            toast.info(`${studentName}'s attendance updated to ${status}`);
+          try {
+            if (payload.new && payload.new.date === date) {
+              const { student_id, status } = payload.new;
+              console.log(`Updating attendance for student ${student_id} to ${status}`);
+              
+              setAttendance(current => ({
+                ...current,
+                [student_id]: status as 'present' | 'absent'
+              }));
+              
+              setLastUpdatedStudent(student_id);
+              
+              // Show a toast notification for the update
+              const studentName = students.find(s => s.id === student_id)?.name || 'Student';
+              toast.info(`${studentName}'s attendance updated to ${status}`);
+            }
+          } catch (error) {
+            console.error('Error processing real-time update:', error);
           }
         }
       )
@@ -82,9 +87,13 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
         console.log('Subscription status:', status);
         if (status === 'SUBSCRIBED') {
           console.log('Successfully subscribed to attendance changes');
+          setSubscriptionStatus('connected');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('Error subscribing to attendance changes');
+          setSubscriptionStatus('error');
           toast.error('Failed to subscribe to real-time updates');
+        } else {
+          setSubscriptionStatus('connecting');
         }
       });
 
@@ -111,6 +120,11 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
 
   return (
     <div className="overflow-hidden rounded-md border border-border shadow-sm">
+      {subscriptionStatus === 'error' && (
+        <div className="bg-red-50 dark:bg-red-900/20 px-4 py-2 text-sm text-red-800 dark:text-red-200">
+          Warning: Real-time updates are not working. Attendance changes may not appear immediately.
+        </div>
+      )}
       <Table>
         <TableHeader className="bg-muted/50">
           <TableRow>
@@ -126,6 +140,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                 <div className="flex flex-col items-center justify-center text-muted-foreground">
                   <AlertCircle className="h-8 w-8 mb-2" />
                   <p>No students found</p>
+                  <p className="text-sm text-muted-foreground mt-1">Add students to mark attendance</p>
                 </div>
               </TableCell>
             </TableRow>
