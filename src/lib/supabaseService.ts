@@ -281,7 +281,6 @@ export const saveAttendance = async (
     }
     
     console.log(`Saving attendance for date: ${date}, subject: ${subjectId}, with ${studentStatuses.length} student records`);
-    console.log('Student statuses:', studentStatuses);
     
     // First, check if there are any students marked as present
     const presentStudents = studentStatuses.filter(student => student.status === 'present');
@@ -289,7 +288,6 @@ export const saveAttendance = async (
     // If no students are present, warn but proceed - we'll still save the empty/absent records
     if (presentStudents.length === 0) {
       console.log('No students present, proceeding to mark all as absent');
-      toast.warning('No students present for this class');
     }
     
     // Delete existing records for this date and subject
@@ -304,7 +302,7 @@ export const saveAttendance = async (
       throw new Error(`Failed to delete existing records: ${deleteError.message}`);
     }
     
-    console.log('Deleted existing attendance records');
+    console.log('Deleted existing attendance records for this date and subject');
     
     // Create new records - but only if we have students to process
     if (studentStatuses.length === 0) {
@@ -322,16 +320,19 @@ export const saveAttendance = async (
       marked_at: new Date().toISOString()
     }));
     
-    const { error } = await supabase
+    console.log('Attempting to insert records:', records);
+    
+    const { data, error } = await supabase
       .from('attendance_records')
-      .insert(records);
+      .insert(records)
+      .select();
     
     if (error) {
       console.error('Error inserting attendance records:', error);
       throw new Error(`Failed to insert new records: ${error.message}`);
     }
     
-    console.log(`Successfully saved ${records.length} attendance records`);
+    console.log(`Successfully saved ${records.length} attendance records:`, data);
     toast.success(`Attendance saved for ${studentStatuses.length} students (${presentStudents.length} present)`);
     return true;
   } catch (error: any) {
