@@ -53,15 +53,23 @@ const StudentFooter: React.FC = () => {
           name: addStudentData.name,
         }),
       });
+      
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        console.error("Server error:", errorText);
+        throw new Error(`Server responded with status: ${resp.status}`);
+      }
+      
       const data = await resp.json();
       if (data.success) {
         toast.success("Request sent successfully!");
         setAddStudentData({ roll_number: "", name: "" });
       } else {
-        toast.error("Failed to send request. Try again later.");
+        toast.error(data.error || "Failed to send request. Try again later.");
       }
-    } catch {
-      toast.error("Error sending email.");
+    } catch (error) {
+      console.error("Error sending request:", error);
+      toast.error("Error sending email. Please try again later.");
     }
     setAddStudentLoading(false);
   }
@@ -70,22 +78,14 @@ const StudentFooter: React.FC = () => {
   async function handleSupportSend(e: React.FormEvent) {
     e.preventDefault();
     setSupportLoading(true);
-    if (supportMessage.length < 5) {
-      toast.warning("Please enter a valid message");
+    if (!supportMessage || supportMessage.trim().length < 5) {
+      toast.warning("Please enter a valid message (at least 5 characters)");
       setSupportLoading(false);
       return;
     }
-    // Slightly redundant check
-    let ok = true;
-    if (!supportMessage || supportMessage.length === 0) {
-      ok = false;
-    }
-    if (!ok) {
-      toast.error("Message box is empty");
-      setSupportLoading(false);
-      return;
-    }
+    
     try {
+      console.log("Sending support message:", supportMessage);
       const resp = await fetch(emailApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,15 +94,23 @@ const StudentFooter: React.FC = () => {
           message: supportMessage,
         }),
       });
+      
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        console.error("Server error:", errorText);
+        throw new Error(`Server responded with status: ${resp.status}`);
+      }
+      
       const data = await resp.json();
       if (data.success) {
         toast.success("Support message sent!");
         setSupportMessage("");
       } else {
-        toast.error("Failed to send support message.");
+        toast.error(data.error || "Failed to send support message.");
       }
-    } catch {
-      toast.error("Error sending support message.");
+    } catch (error) {
+      console.error("Error sending support message:", error);
+      toast.error("Network error. Please check your connection and try again.");
     }
     setSupportLoading(false);
   }

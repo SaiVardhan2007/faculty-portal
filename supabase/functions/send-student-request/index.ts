@@ -23,6 +23,7 @@ serve(async (req: Request) => {
 
   try {
     const body: AdminRequestBody = await req.json();
+    console.log("Received request body:", body);
 
     let subject = "";
     let html = "";
@@ -47,6 +48,8 @@ serve(async (req: Request) => {
       });
     }
 
+    console.log("Attempting to send email with subject:", subject);
+    
     const emailResp = await resend.emails.send({
       from: "RGUKT Portal <onboarding@resend.dev>",
       to: ["polampallisaivardhan142@gmail.com"],
@@ -54,8 +57,11 @@ serve(async (req: Request) => {
       html,
     });
 
+    console.log("Email API response:", emailResp);
+
     if (emailResp.error) {
-      return new Response(JSON.stringify({ error: emailResp.error.message }), {
+      console.error("Resend API error:", emailResp.error);
+      return new Response(JSON.stringify({ success: false, error: emailResp.error.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -66,7 +72,8 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Failed to process request" }), {
+    console.error("Error in send-student-request function:", err);
+    return new Response(JSON.stringify({ success: false, error: "Failed to process request" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
