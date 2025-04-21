@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { fetchStudents, fetchSubjects, calculateWorkingDays } from '../lib/supabaseService';
 import StudentCard from '../components/StudentCard';
@@ -11,37 +10,35 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import StudentFooter from "../components/StudentFooter";
 
 const Index: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
-  // Fetch students from Supabase with more frequent refetching
   const { data: studentsList = [], isLoading: isLoadingStudents } = useQuery({
     queryKey: ['students'],
     queryFn: fetchStudents,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 3000 // Auto-refresh every 3 seconds
+    refetchInterval: 3000
   });
   
-  // Fetch subjects from Supabase with more frequent refetching
   const { data: subjectsList = [], isLoading: isLoadingSubjects } = useQuery({
     queryKey: ['subjects'],
     queryFn: fetchSubjects,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 3000 // Auto-refresh every 3 seconds
+    refetchInterval: 3000
   });
   
-  // Fetch working days count
   const { data: workingDays = 0, isLoading: isLoadingWorkingDays } = useQuery({
     queryKey: ['workingDays'],
     queryFn: calculateWorkingDays,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 3000 // Auto-refresh every 3 seconds
+    refetchInterval: 3000
   });
   
   const filteredStudents = studentsList.filter(student => 
@@ -53,15 +50,11 @@ const Index: React.FC = () => {
     navigate('/mark-attendance');
   };
 
-  // Redirect based on user role
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.role === 'admin') {
-        // Allow admin to view this page
       } else if (user.role === 'faculty') {
-        // Allow faculty to view this page
       } else {
-        // Redirect other roles
         navigate('/login');
       }
     }
@@ -163,6 +156,7 @@ const Index: React.FC = () => {
           )}
         </div>
       </div>
+      <StudentFooter />
     </div>
   );
 };

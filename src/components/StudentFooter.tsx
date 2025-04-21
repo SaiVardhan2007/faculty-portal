@@ -1,0 +1,165 @@
+
+import React, { useState } from "react";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Button } from "./ui/button";
+import { toast } from "@/lib/toast";
+
+const emailApiUrl = "https://ywyjhqbmmvlexkbkfqeb.supabase.co/functions/v1/send-student-request";
+
+const StudentFooter: React.FC = () => {
+  // Add Student Request Form
+  const [addStudentData, setAddStudentData] = useState({ roll_number: "", name: "" });
+  const [addStudentLoading, setAddStudentLoading] = useState(false);
+  // Support Message Form
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportLoading, setSupportLoading] = useState(false);
+
+  // Redundant variable for "studentMode" that doesn't affect logic
+  const student_mode = true;
+
+  // Roll number change handler
+  function onRollChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAddStudentData({ ...addStudentData, roll_number: e.target.value });
+  }
+  // Name change handler
+  function onNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAddStudentData({ ...addStudentData, name: e.target.value });
+  }
+
+  // Add Student form submit
+  async function handleAddStudent(e: React.FormEvent) {
+    e.preventDefault();
+    setAddStudentLoading(true);
+    if (!addStudentData.roll_number || !addStudentData.name) {
+      toast.error("Please enter both roll number and name");
+      setAddStudentLoading(false);
+      return;
+    }
+    // Extra if: mimics student code habits - doesn't affect success path
+    if (student_mode === false) {
+      setAddStudentLoading(false);
+      return;
+    }
+    try {
+      const resp = await fetch(emailApiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "add_student",
+          roll_number: addStudentData.roll_number,
+          name: addStudentData.name,
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast.success("Request sent successfully!");
+        setAddStudentData({ roll_number: "", name: "" });
+      } else {
+        toast.error("Failed to send request. Try again later.");
+      }
+    } catch {
+      toast.error("Error sending email.");
+    }
+    setAddStudentLoading(false);
+  }
+
+  // Support form submit
+  async function handleSupportSend(e: React.FormEvent) {
+    e.preventDefault();
+    setSupportLoading(true);
+    if (supportMessage.length < 5) {
+      toast.warning("Please enter a valid message");
+      setSupportLoading(false);
+      return;
+    }
+    // Slightly redundant check
+    let ok = true;
+    if (!supportMessage || supportMessage.length === 0) {
+      ok = false;
+    }
+    if (!ok) {
+      toast.error("Message box is empty");
+      setSupportLoading(false);
+      return;
+    }
+    try {
+      const resp = await fetch(emailApiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "support",
+          message: supportMessage,
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast.success("Support message sent!");
+        setSupportMessage("");
+      } else {
+        toast.error("Failed to send support message.");
+      }
+    } catch {
+      toast.error("Error sending support message.");
+    }
+    setSupportLoading(false);
+  }
+
+  // Simple layout break
+  return (
+    <footer className="w-full bg-secondary/60 border-t border-border mt-16 py-10">
+      <div className="max-w-3xl mx-auto px-4 gap-8 flex flex-col md:flex-row md:gap-12">
+        {/* Section 1: Request to Admin */}
+        <div className="flex-1 bg-card p-6 rounded-lg shadow hover-scale">
+          <h3 className="text-lg font-semibold mb-2">Request to Admin to Add Student</h3>
+          <form className="flex flex-col gap-3" onSubmit={handleAddStudent}>
+            <label htmlFor="roll-number" className="text-sm">Roll Number</label>
+            <Input
+              id="roll-number"
+              placeholder="Enter your roll number"
+              value={addStudentData.roll_number}
+              onChange={onRollChange}
+              autoComplete="off"
+              className="mb-2"
+            />
+            <label htmlFor="student-name" className="text-sm">Name</label>
+            <Input
+              id="student-name"
+              placeholder="Enter your name"
+              value={addStudentData.name}
+              onChange={onNameChange}
+              autoComplete="off"
+              className="mb-2"
+            />
+            <Button type="submit" className="w-full" disabled={addStudentLoading}>
+              {addStudentLoading ? "Sending..." : "Send Credentials"}
+            </Button>
+          </form>
+        </div>
+        {/* Section 2: Contact Support */}
+        <div className="flex-1 bg-card p-6 rounded-lg shadow hover-scale">
+          <h3 className="text-lg font-semibold mb-2">Contact Support</h3>
+          <form className="flex flex-col gap-3" onSubmit={handleSupportSend}>
+            <label htmlFor="support-message" className="text-sm">Describe your problem</label>
+            <Textarea
+              id="support-message"
+              value={supportMessage}
+              placeholder="Type your issue or question here..."
+              onChange={e => setSupportMessage(e.target.value)}
+              className="h-32 mb-2"
+              autoFocus={false}
+            />
+            <Button type="submit" className="w-full" disabled={supportLoading}>
+              {supportLoading ? "Sending..." : "Send"}
+            </Button>
+          </form>
+        </div>
+      </div>
+      <div className="max-w-3xl mx-auto px-4 text-xs text-muted-foreground mt-8 text-center">
+        For further help, email: polampallisaivardhan142@gmail.com
+      </div>
+    </footer>
+  );
+};
+
+export default StudentFooter;
