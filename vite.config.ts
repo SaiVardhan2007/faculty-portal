@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "faculty-portal-rgukt.app", // updated host for dev and preview
     port: 8080,
   },
   plugins: [

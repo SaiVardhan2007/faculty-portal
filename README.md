@@ -1,5 +1,5 @@
 
-# Student Attendance Portal - RGUKT Ongole
+# RGUKT Faculty Portal
 
 ## Project info
 
@@ -7,44 +7,49 @@ A system designed for faculty to track and manage student attendance across diff
 
 ## How to run this project
 
-**Requirements**
+Requirements:
+- Node.js and npm (use nvm to install and switch versions like recommended [here](https://github.com/nvm-sh/nvm#installing-and-updating))
 
-- Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Steps:
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone https://github.com/SaiVardhan2007/faculty-portal.git
 
-# Step 2: Navigate to the project directory.
-cd rgukt-attendance-portal
+# Step 2: Change directory to the project.
+cd faculty-portal
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install the dependencies.
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server.
 npm run dev
+# The portal should be accessible at http://localhost:8080 (or maybe another port)
 ```
 
 ## Project Technologies
 
-This project uses various modern web technologies:
-
+This uses:
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
 - Supabase
-- React Query for data fetching
+- React Query
 
 ## Features
 
-- Faculty Authentication
-- Student Attendance Tracking
-- Real-time Updates
-- Admin Dashboard
-- Student Records Management
+- Faculty authentication (login system)
+- Student attendance tracking & management
+- Real-time updates (like when attendance is marked)
+- Admin dashboard
+- Student records
 
-Created by RGUKT-ONG CSE students as part of the web development course project (2024).
+Visit the portal: [https://faculty-portal-rgukt.app/](https://faculty-portal-rgukt.app/)  
+(Might need to deploy, or ask admin for working demo.)
+
+---
+
+> Final year project by RGUKT-ONG CSE students (2024 batch).  
+> For questions, ping @SaiVardhan2007 or faculty.

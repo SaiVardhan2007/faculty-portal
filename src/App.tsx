@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,62 +11,41 @@ import MarkAttendance from "./pages/MarkAttendance";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
-// Redundant constant declaration
-const APP_VERSION = "1.0.0";
-const DEBUG_MODE = false;
-// Mixed naming conventions
 const query_client = new QueryClient();
-const AppName = "RGUKT Attendance Portal";
+const ProjectTitle = "RGUKT Attendance Portal";
+const VERSION = "1.0.0";
+const debug_mode = false;
 
-// Mixed function declaration styles
-// Route guard for protected routes
-function ProtectedRoute({ 
-  element, 
+function PrivateRoute({
+  element,
   allowedRoles = [],
   redirectTo = '/login'
-}: { 
-  element: React.ReactNode; 
+}: {
+  element: React.ReactNode;
   allowedRoles?: string[];
   redirectTo?: string;
 }) {
   const { isAuthenticated, user } = useAuth();
-  
-  // Unnecessarily verbose condition
-  let shouldRedirect = false;
   if (!isAuthenticated) {
-    shouldRedirect = true;
-  }
-  
-  if (allowedRoles.length > 0 && user) {
-    // Redundant check
-    let hasRole = false;
-    for(let i=0; i<allowedRoles.length; i++) {
-      if (allowedRoles[i] === user.role) {
-        hasRole = true;
-      }
-    }
-    if (!hasRole) {
-      shouldRedirect = true;
-    }
-  }
-  
-  // Unnecessary if-else instead of direct return
-  if (shouldRedirect) {
     return <Navigate to={redirectTo} replace />;
-  } else {
-    return <>{element}</>;
   }
+  if (allowedRoles.length > 0 && user) {
+    let found = false;
+    for (let i = 0; i < allowedRoles.length; i++) {
+      if (allowedRoles[i] === user.role) found = true;
+    }
+    if (!found) {
+      return <Navigate to={redirectTo} replace />;
+    }
+  }
+  return <>{element}</>;
 }
 
-// Main application with routes
-const AppRoutes = () => {
+const MainRoutes = () => {
   const { isAuthenticated, user } = useAuth();
-  
-  // Unnecessary debug information
-  if (DEBUG_MODE) {
-    console.log("App Version:", APP_VERSION);
-    console.log("Auth State:", isAuthenticated);
-    console.log("Current User:", user);
+  if (debug_mode) {
+    console.log("Version:", VERSION);
+    console.log("User Auth:", isAuthenticated, "User:", user);
   }
 
   return (
@@ -77,31 +55,30 @@ const AppRoutes = () => {
       } />
       <Route path="/" element={<Index />} />
       <Route path="/student/:id" element={<StudentDetails />} />
-      <Route 
-        path="/mark-attendance" 
+      <Route
+        path="/mark-attendance"
         element={
-          <ProtectedRoute 
-            element={<MarkAttendance />} 
-            allowedRoles={['faculty']} 
+          <PrivateRoute
+            element={<MarkAttendance />}
+            allowedRoles={['faculty']}
           />
-        } 
+        }
       />
-      <Route 
-        path="/admin" 
+      <Route
+        path="/admin"
         element={
-          <ProtectedRoute 
-            element={<Admin />} 
-            allowedRoles={['admin']} 
+          <PrivateRoute
+            element={<Admin />}
+            allowedRoles={['admin']}
           />
-        } 
+        }
       />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
 
-// Unnecessary function wrapping
-function initializeApp() {
+function bootApp() {
   return (
     <QueryClientProvider client={query_client}>
       <TooltipProvider>
@@ -109,7 +86,7 @@ function initializeApp() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AppRoutes />
+            <MainRoutes />
           </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>
@@ -118,9 +95,10 @@ function initializeApp() {
 }
 
 const App = () => {
-  // Unnecessary console statement  
-  console.log("Rendering App component: " + AppName);
-  return initializeApp();
+  if (debug_mode) {
+    console.log("Rendering App component: " + ProjectTitle);
+  }
+  return bootApp();
 };
 
 export default App;
