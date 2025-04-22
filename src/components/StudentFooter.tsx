@@ -5,8 +5,6 @@ import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { toast } from "@/lib/toast";
 
-const emailApiUrl = "https://ywyjhqbmmvlexkbkfqeb.supabase.co/functions/v1/send-student-request";
-
 const StudentFooter: React.FC = () => {
   // Add Student Request Form
   const [addStudentData, setAddStudentData] = useState({ roll_number: "", name: "" });
@@ -36,40 +34,33 @@ const StudentFooter: React.FC = () => {
       setAddStudentLoading(false);
       return;
     }
-    // Changed the comparison to avoid TypeScript error
-    // The intent seems to be to have a condition that is always false (for student code example)
-    // So we'll use a different approach that TypeScript won't flag
-    if (!student_mode) {
-      setAddStudentLoading(false);
-      return;
-    }
+    
     try {
-      const resp = await fetch(emailApiUrl, {
+      // Create form data with student information
+      const formData = new FormData();
+      formData.append("_subject", "New Student Add Request");
+      formData.append("Roll Number", addStudentData.roll_number);
+      formData.append("Name", addStudentData.name);
+      formData.append("Type", "add_student");
+      
+      // Send to FormSubmit service - replace with the recipient email
+      const response = await fetch("https://formsubmit.co/polampallisaivardhan142@gmail.com", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "add_student",
-          roll_number: addStudentData.roll_number,
-          name: addStudentData.name,
-        }),
+        body: formData,
+        headers: {
+          "Accept": "application/json",
+        },
       });
       
-      if (!resp.ok) {
-        const errorText = await resp.text();
-        console.error("Server error:", errorText);
-        throw new Error(`Server responded with status: ${resp.status}`);
+      if (!response.ok) {
+        throw new Error(`Form submission failed with status: ${response.status}`);
       }
       
-      const data = await resp.json();
-      if (data.success) {
-        toast.success("Request sent successfully!");
-        setAddStudentData({ roll_number: "", name: "" });
-      } else {
-        toast.error(data.error || "Failed to send request. Try again later.");
-      }
+      toast.success("Request sent successfully!");
+      setAddStudentData({ roll_number: "", name: "" });
     } catch (error) {
       console.error("Error sending request:", error);
-      toast.error("Error sending email. Please try again later.");
+      toast.error("Error sending request. Please try again later.");
     }
     setAddStudentLoading(false);
   }
@@ -85,29 +76,27 @@ const StudentFooter: React.FC = () => {
     }
     
     try {
-      console.log("Sending support message:", supportMessage);
-      const resp = await fetch(emailApiUrl, {
+      // Create form data with support message
+      const formData = new FormData();
+      formData.append("_subject", "Student Contact Support Request");
+      formData.append("Message", supportMessage);
+      formData.append("Type", "support");
+      
+      // Send to FormSubmit service - replace with the recipient email
+      const response = await fetch("https://formsubmit.co/polampallisaivardhan142@gmail.com", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "support",
-          message: supportMessage,
-        }),
+        body: formData,
+        headers: {
+          "Accept": "application/json",
+        },
       });
       
-      if (!resp.ok) {
-        const errorText = await resp.text();
-        console.error("Server error:", errorText);
-        throw new Error(`Server responded with status: ${resp.status}`);
+      if (!response.ok) {
+        throw new Error(`Form submission failed with status: ${response.status}`);
       }
       
-      const data = await resp.json();
-      if (data.success) {
-        toast.success("Support message sent!");
-        setSupportMessage("");
-      } else {
-        toast.error(data.error || "Failed to send support message.");
-      }
+      toast.success("Support message sent!");
+      setSupportMessage("");
     } catch (error) {
       console.error("Error sending support message:", error);
       toast.error("Network error. Please check your connection and try again.");
