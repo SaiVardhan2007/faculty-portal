@@ -47,7 +47,7 @@ const Login: React.FC = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="dr.sharma@example.com"
+                  placeholder="example@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -77,11 +77,6 @@ const Login: React.FC = () => {
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  <p>Demo credentials:</p>
-                  <p>Email: dr.sharma@example.com</p>
-                  <p>Password: password123</p>
                 </div>
               </div>
             </CardContent>
