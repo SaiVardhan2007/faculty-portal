@@ -101,6 +101,7 @@ export type DbAttendanceRecord = {
   marked_at: string;
 }
 
+// Added new interface for student requests
 export interface StudentRequest {
   id: string;
   roll_number: string;

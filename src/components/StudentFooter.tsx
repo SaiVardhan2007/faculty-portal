@@ -6,29 +6,25 @@ import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const StudentFooter: React.FC = () => {
-  // Add Student Request Form
   const [addStudentData, setAddStudentData] = useState({ roll_number: "", name: "" });
   const [addStudentLoading, setAddStudentLoading] = useState(false);
-  // Support Message Form
   const [supportMessage, setSupportMessage] = useState("");
   const [supportLoading, setSupportLoading] = useState(false);
 
-  // Changed from a boolean constant to a boolean variable that could potentially change
   const student_mode = true;
 
-  // Roll number change handler
   function onRollChange(e: React.ChangeEvent<HTMLInputElement>) {
     setAddStudentData({ ...addStudentData, roll_number: e.target.value });
   }
-  // Name change handler
+
   function onNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     setAddStudentData({ ...addStudentData, name: e.target.value });
   }
 
-  // Add Student form submit
   async function handleAddStudent(e: React.FormEvent) {
     e.preventDefault();
     setAddStudentLoading(true);
+    
     if (!addStudentData.roll_number || !addStudentData.name) {
       toast.error("Please enter both roll number and name");
       setAddStudentLoading(false);
@@ -36,7 +32,6 @@ const StudentFooter: React.FC = () => {
     }
     
     try {
-      // Store request in database
       const { error } = await supabase
         .from('student_requests')
         .insert({
@@ -55,7 +50,6 @@ const StudentFooter: React.FC = () => {
     setAddStudentLoading(false);
   }
 
-  // Support form submit
   async function handleSupportSend(e: React.FormEvent) {
     e.preventDefault();
     setSupportLoading(true);
@@ -66,13 +60,11 @@ const StudentFooter: React.FC = () => {
     }
     
     try {
-      // Create form data with support message
       const formData = new FormData();
       formData.append("_subject", "Student Contact Support Request");
       formData.append("Message", supportMessage);
       formData.append("Type", "support");
       
-      // Send to FormSubmit service - replace with the recipient email
       const response = await fetch("https://formsubmit.co/polampallisaivardhan142@gmail.com", {
         method: "POST",
         body: formData,
@@ -94,11 +86,9 @@ const StudentFooter: React.FC = () => {
     setSupportLoading(false);
   }
 
-  // Simple layout break
   return (
     <footer className="w-full bg-secondary/60 border-t border-border mt-16 py-10">
       <div className="max-w-3xl mx-auto px-4 gap-8 flex flex-col md:flex-row md:gap-12">
-        {/* Section 1: Request to Admin */}
         <div className="flex-1 bg-card p-6 rounded-lg shadow hover-scale">
           <h3 className="text-lg font-semibold mb-2">Request to Admin to Add Student</h3>
           <form className="flex flex-col gap-3" onSubmit={handleAddStudent}>
@@ -125,7 +115,6 @@ const StudentFooter: React.FC = () => {
             </Button>
           </form>
         </div>
-        {/* Section 2: Contact Support */}
         <div className="flex-1 bg-card p-6 rounded-lg shadow hover-scale">
           <h3 className="text-lg font-semibold mb-2">Contact Support</h3>
           <form className="flex flex-col gap-3" onSubmit={handleSupportSend}>

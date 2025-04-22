@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -13,8 +12,8 @@ import { addStudent } from "@/lib/supabaseService";
 const AdminDashboardFooter = () => {
   const queryClient = useQueryClient();
 
-  // Fetch student requests
-  const { data: studentRequests = [], isLoading } = useQuery({
+  // Fetch student requests with proper typing
+  const { data: studentRequests = [], isLoading } = useQuery<StudentRequest[]>({
     queryKey: ['studentRequests'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -23,14 +22,13 @@ const AdminDashboardFooter = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as StudentRequest[];
+      return data;
     }
   });
 
-  // Add student mutation
+  // Add student mutation with proper typing
   const addStudentMutation = useMutation({
     mutationFn: async (request: StudentRequest) => {
-      // Check if student with same roll number exists
       const { data: existingStudent } = await supabase
         .from('students')
         .select('roll_number')
@@ -42,7 +40,6 @@ const AdminDashboardFooter = () => {
         return;
       }
 
-      // Add student
       await addStudent({
         roll_number: request.roll_number,
         name: request.name,
@@ -51,7 +48,6 @@ const AdminDashboardFooter = () => {
         section: 'A'
       });
 
-      // Delete request
       await supabase
         .from('student_requests')
         .delete()
@@ -65,7 +61,7 @@ const AdminDashboardFooter = () => {
     }
   });
 
-  // Delete request mutation
+  // Delete request mutation with proper typing
   const deleteRequestMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
