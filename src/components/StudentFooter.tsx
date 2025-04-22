@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -65,7 +66,7 @@ const StudentFooter: React.FC = () => {
       formData.append("Message", supportMessage);
       formData.append("Type", "support");
       
-      const response = await fetch("https://formsubmit.co/polampallisaivardhan142@gmail.com", {
+      const response = await fetch("https://formsubmit.co/polampallikavyasri@gmail.com", {
         method: "POST",
         body: formData,
         headers: {
@@ -134,7 +135,7 @@ const StudentFooter: React.FC = () => {
         </div>
       </div>
       <div className="max-w-3xl mx-auto px-4 text-xs text-muted-foreground mt-8 text-center">
-        For further help, email: polampallisaivardhan142@gmail.com
+        For further help, email: polampallikavyasri@gmail.com
       </div>
     </footer>
   );
