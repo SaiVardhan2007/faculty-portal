@@ -21,6 +21,7 @@ import {
   updateSubject,
   deleteSubject
 } from '../lib/supabaseService';
+import AdminDashboardFooter from '../components/AdminDashboardFooter';
 
 const Admin: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -52,7 +53,6 @@ const Admin: React.FC = () => {
     name: '',
   });
 
-  // Fetch students with more frequent refetching
   const { 
     data: studentsList = [],
     isLoading: isLoadingStudents,
@@ -62,10 +62,9 @@ const Admin: React.FC = () => {
     queryKey: ['students'],
     queryFn: fetchStudents,
     refetchOnWindowFocus: true,
-    refetchInterval: 1000 // Auto-refresh every 1 second for better real-time updates
+    refetchInterval: 1000
   });
 
-  // Fetch subjects with more frequent refetching
   const { 
     data: subjectsList = [],
     isLoading: isLoadingSubjects, 
@@ -75,15 +74,14 @@ const Admin: React.FC = () => {
     queryKey: ['subjects'],
     queryFn: fetchSubjects,
     refetchOnWindowFocus: true,
-    refetchInterval: 1000 // Auto-refresh every 1 second for better real-time updates
+    refetchInterval: 1000
   });
   
-  // Add student mutation
   const addStudentMutation = useMutation({
     mutationFn: addStudent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      refetchStudents(); // Immediately refetch
+      refetchStudents();
       setNewStudent({
         roll_number: '',
         name: '',
@@ -99,35 +97,32 @@ const Admin: React.FC = () => {
     }
   });
 
-  // Update student mutation
   const updateStudentMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<{ roll_number: string; name: string }> }) => 
       updateStudent(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      refetchStudents(); // Immediately refetch
+      refetchStudents();
       setEditingStudentId(null);
       toast.success('Student updated successfully');
     }
   });
 
-  // Delete student mutation
   const deleteStudentMutation = useMutation({
     mutationFn: deleteStudent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      refetchStudents(); // Immediately refetch
+      refetchStudents();
       toast.success('Student deleted successfully');
     }
   });
 
-  // Add subject mutation
   const addSubjectMutation = useMutation({
     mutationFn: (subjectData: { name: string; faculty_id: string; course_id: string; }) => 
       addSubject(subjectData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
-      refetchSubjects(); // Immediately refetch
+      refetchSubjects();
       setNewSubject({
         name: '',
         faculty_id: '',
@@ -141,24 +136,22 @@ const Admin: React.FC = () => {
     }
   });
 
-  // Update subject mutation
   const updateSubjectMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<{ name: string }> }) => 
       updateSubject(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
-      refetchSubjects(); // Immediately refetch
+      refetchSubjects();
       setEditingSubjectId(null);
       toast.success('Subject updated successfully');
     }
   });
 
-  // Delete subject mutation
   const deleteSubjectMutation = useMutation({
     mutationFn: deleteSubject,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects'] });
-      refetchSubjects(); // Immediately refetch
+      refetchSubjects();
       toast.success('Subject deleted successfully');
     }
   });
@@ -265,7 +258,7 @@ const Admin: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       
-      <div className="container px-4 py-6 md:py-10 mx-auto animate-fade-in">
+      <div className="container px-4 py-6 md:py-10 mx-auto">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl mb-2">Admin Dashboard</h1>
@@ -531,6 +524,8 @@ const Admin: React.FC = () => {
           </Tabs>
         </div>
       </div>
+      
+      <AdminDashboardFooter />
     </div>
   );
 };

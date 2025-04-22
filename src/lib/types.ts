@@ -1,4 +1,3 @@
-
 // Core data models
 export interface Student {
   id: string;
@@ -100,4 +99,11 @@ export type DbAttendanceRecord = {
   status: 'present' | 'absent';
   marked_by_id: string;
   marked_at: string;
+}
+
+export interface StudentRequest {
+  id: string;
+  roll_number: string;
+  name: string;
+  created_at: string;
 }

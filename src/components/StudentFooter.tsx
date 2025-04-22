@@ -1,9 +1,9 @@
-
 import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { toast } from "@/lib/toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const StudentFooter: React.FC = () => {
   // Add Student Request Form
@@ -36,25 +36,15 @@ const StudentFooter: React.FC = () => {
     }
     
     try {
-      // Create form data with student information
-      const formData = new FormData();
-      formData.append("_subject", "New Student Add Request");
-      formData.append("Roll Number", addStudentData.roll_number);
-      formData.append("Name", addStudentData.name);
-      formData.append("Type", "add_student");
+      // Store request in database
+      const { error } = await supabase
+        .from('student_requests')
+        .insert({
+          roll_number: addStudentData.roll_number,
+          name: addStudentData.name
+        });
       
-      // Send to FormSubmit service - replace with the recipient email
-      const response = await fetch("https://formsubmit.co/polampallisaivardhan142@gmail.com", {
-        method: "POST",
-        body: formData,
-        headers: {
-          "Accept": "application/json",
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Form submission failed with status: ${response.status}`);
-      }
+      if (error) throw error;
       
       toast.success("Request sent successfully!");
       setAddStudentData({ roll_number: "", name: "" });
